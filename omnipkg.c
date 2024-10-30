@@ -19,6 +19,11 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;  // Logic for wrong entry
     }
 
+    if (!is_running_as_sudo()) {
+        fprintf(stderr, "Error: This program must be run with sudo.\n");
+        return EXIT_FAILURE;  // Logic for wrong entry
+    }
+    
     const char *package_managers[] = {"pacman", "yay", "apt", "dnf", "zypper", "flatpak", "snap"};
     int num_managers = sizeof(package_managers) / sizeof(package_managers[0]);
 
