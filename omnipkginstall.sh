@@ -64,3 +64,5 @@ else
 fi
 
 gcc -o omnipkg omnipkg.c
+chmod +x omnipkg
+sudo mv omnipkg /usr/local/bin/
