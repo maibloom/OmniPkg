@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // Include for getuid() and geteuid()
 
 #define MAX_INPUT_LENGTH 100
 #define MAX_PACKAGES 10  // Define a maximum number of packages for input
@@ -10,8 +11,15 @@ void update_package_manager(const char *manager);
 int check_package_manager(const char *manager, const char *package);
 void install_package(const char *manager, const char *package);
 void print_help();
+int is_running_as_sudo();
 
 int main(int argc, char *argv[]) {
+    // Check if the program is run with sudo
+    if (!is_running_as_sudo()) {
+        fprintf(stderr, "Error: This program must be run with sudo.\n");
+        return EXIT_FAILURE;  // Logic for wrong entry
+    }
+
     // Check if any arguments are provided
     if (argc < 2) {
         fprintf(stderr, "Error: No package names provided.\n");
@@ -19,11 +27,6 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;  // Logic for wrong entry
     }
 
-    if (!is_running_as_sudo()) {
-        fprintf(stderr, "Error: This program must be run with sudo.\n");
-        return EXIT_FAILURE;  // Logic for wrong entry
-    }
-    
     const char *package_managers[] = {"pacman", "yay", "apt", "dnf", "zypper", "flatpak", "snap"};
     int num_managers = sizeof(package_managers) / sizeof(package_managers[0]);
 
@@ -60,6 +63,11 @@ int main(int argc, char *argv[]) {
     }
 
     return EXIT_SUCCESS;
+}
+
+// Function to check if the program is run with sudo
+int is_running_as_sudo() {
+    return geteuid() == 0; // Returns 1 if running as root (sudo), otherwise 0
 }
 
 // Function to update the package database for a specific package manager
