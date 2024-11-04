@@ -11,58 +11,57 @@ check_dialog() {
 # Check for dialog
 check_dialog
 
-# Define package managers
+# Define package managers in an array
 PACKAGES=("apt" "dnf" "rpm" "yast2" "zypper" "flatpak" "snapd" "nix" "docker" "pikaur" "paru")
 
-# Dialog checklist for package managers
-CHOICES=$(dialog --stdout --checklist "Select package managers to install:" 22 76 16 \
-1 "apt" off \
-2 "dnf" off \
-3 "rpm" off \
-4 "yast2" off \
-5 "zypper" off \
-6 "flatpak" off \
-7 "snapd" off \
-8 "nix" off \
-9 "docker" off \
-10 "pikaur" off \
-11 "paru" off \
-)
+# Generate dialog checklist options dynamically
+options=()
+for i in "${!PACKAGES[@]}"; do
+    options+=($((i+1)) "${PACKAGES[$i]}" "off")
+done
+
+# Display dialog checklist
+CHOICES=$(dialog --stdout --checklist "Select package managers to install:" 22 76 16 "${options[@]}")
 
 # Exit if no choices were made
 if [ -z "$CHOICES" ]; then
     dialog --msgbox "No package managers selected. Exiting." 6 40
+    clear
     exit 1
 fi
 
-# Convert choices to an array
+# Map selected choices to package names
 selected_packages=()
 for choice in $CHOICES; do
-    case $choice in
-        1) selected_packages+=("apt") ;;
-        2) selected_packages+=("dnf") ;;
-        3) selected_packages+=("rpm") ;;
-        4) selected_packages+=("yast2") ;;
-        5) selected_packages+=("zypper") ;;
-        6) selected_packages+=("flatpak") ;;
-        7) selected_packages+=("snapd") ;;
-        8) selected_packages+=("nix") ;;
-        9) selected_packages+=("docker") ;;
-        10) selected_packages+=("pikaur") ;;
-        11) selected_packages+=("paru") ;;
-    esac
+    selected_packages+=("${PACKAGES[$((choice-1))]}")
 done
+
+# Check if yay is installed before proceeding
+if ! command -v yay &> /dev/null; then
+    dialog --msgbox "The 'yay' package manager is required to install packages but is not installed. Please install yay first." 8 50
+    clear
+    exit 1
+fi
 
 # Install selected packages
 if [ ${#selected_packages[@]} -gt 0 ]; then
-    dialog --infobox "Installing selected packages..." 5 30
+    dialog --infobox "Installing selected packages..." 5 40
     sleep 2  # Pause to show the message
-    yay -S --needed "${selected_packages[@]}"
+    yay -S --needed "${selected_packages[@]}" &>> "$LOG_FILE"
     dialog --msgbox "Installation complete." 6 30
 else
     dialog --msgbox "No packages selected for installation." 6 40
 fi
 
-gcc -o omnipkg omnipkg.c
-chmod +x omnipkg
-sudo mv omnipkg /usr/local/bin/
+# Compile and move omnipkg binary (assuming omnipkg.c exists)
+if [ -f omnipkg.c ]; then
+    gcc -o omnipkg omnipkg.c
+    chmod +x omnipkg
+    sudo mv omnipkg /usr/local/bin/
+    dialog --msgbox "omnipkg compiled and moved to /usr/local/bin/." 6 50
+else
+    dialog --msgbox "omnipkg.c source file not found. Skipping compilation." 6 50
+fi
+
+# Clear the dialog artifacts from the terminal
+clear
