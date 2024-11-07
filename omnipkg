@@ -139,17 +139,20 @@ function update_all() {
 function Omnipkg() {
     case "$1" in
         "-a")
-            if [[ -z "$2" ]]; then
-                echo "Please provide a package name with the -a option."
+            shift # Remove the '-a' flag from the arguments
+            if [[ $# -eq 0 ]]; then
+                echo "Please provide at least one package name with the -a option."
                 exit 1
             fi
-            global_installation "$2" && echo "Installation of $2 completed successfully!"
+            for package in "$@"; do
+                global_installation "$package" && echo "Installation of $package completed successfully!"
+            done
             ;;
         "-u")
             update_all
             ;;
         *)
-            echo "Usage: $0 -a <package_name> | -u (to update all packages)"
+            echo "Usage: $0 -a <package_name(s)> | -u (to update all packages)"
             exit 1
             ;;
     esac
