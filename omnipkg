@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# Function to check for root privileges
+function check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "This script requires root privileges. Please run it as root or with sudo."
+        exit 1
+    fi
+}
+
+# Function to check and install Snap packages
+function snap_install() {
+    if ! command -v snap &> /dev/null; then
+        echo "Snap is not installed. Installing Snap..."
+        git clone https://aur.archlinux.org/snapd.git
+        cd snapd || exit 1
+        makepkg -si
+        sudo systemctl enable --now snapd.socket
+        sudo systemctl enable --now snapd.apparmor.service
+        sudo ln -s /var/lib/snapd/snap /snap
+        cd .. || exit 1
+        rm -rf snapd
+    fi
+
+    if snap install "$1"; then
+        echo "$1 has been installed successfully with Snapcraft."
+    else
+        echo "$1 has FAILED to get installed with Snapcraft."
+        return 1
+    fi
+}
+
+# Function to try installation with Pacman
+function pacman_install() {
+    if pacman -S --noconfirm "$1"; then
+        echo "$1 has been installed successfully with Pacman."
+    else
+        echo "$1 has FAILED to get installed with Pacman."
+        return 1
+    fi
+}
+
+# Function to try installation with Yay
+function yay_install() {
+    if ! command -v yay &> /dev/null; then
+        echo "Yay is not installed. Installing Yay..."
+        git clone https://aur.archlinux.org/yay.git
+        cd yay || exit 1
+        makepkg -si
+        cd .. || exit 1
+        rm -rf yay
+    fi
+
+    if yay -S --noconfirm "$1"; then
+        echo "$1 has been installed successfully with Yay."
+    else
+        echo "$1 has FAILED to get installed with Yay."
+        return 1
+    fi
+}
+
+# Function to try installation with Apt
+function apt_install() {
+    if ! command -v apt &> /dev/null; then
+        echo "Apt is not available on this system. Skipping..."
+        return 1
+    fi
+
+    if apt-get install -y "$1"; then
+        echo "$1 has been installed successfully with Apt."
+    else
+        echo "$1 has FAILED to get installed with Apt."
+        return 1
+    fi
+}
+
+# Function to try installation with multiple package managers
+function global_installation() {
+    echo "Attempting to install $1 with Snap..."
+    if snap_install "$1"; then return 0; fi
+
+    echo "Attempting to install $1 with Pacman..."
+    if pacman_install "$1"; then return 0; fi
+
+    echo "Attempting to install $1 with Yay..."
+    if yay_install "$1"; then return 0; fi
+
+    echo "Attempting to install $1 with Apt..."
+    if apt_install "$1"; then return 0; fi
+
+    echo "Installation of $1 FAILED with all package managers."
+    return 1
+}
+
+# Function to update all packages across managers
+function update_all() {
+    echo "Updating all packages with Snap, Pacman, Yay, and Apt..."
+
+    # Update Snap packages
+    if command -v snap &> /dev/null; then
+        echo "Updating Snap packages..."
+        sudo snap refresh
+    fi
+
+    # Update Pacman packages
+    echo "Updating Pacman packages..."
+    sudo pacman -Syu --noconfirm
+
+    # Update Yay packages
+    if command -v yay &> /dev/null; then
+        echo "Updating Yay packages..."
+        yay -Syu --noconfirm
+    fi
+
+    # Update Apt packages if available (for Debian-based compatibility)
+    if command -v apt &> /dev/null; then
+        echo "Updating Apt packages..."
+        sudo apt-get update && sudo apt-get upgrade -y
+    fi
+
+    echo "All packages have been updated successfully."
+}
+
+# Main function to handle package installation and update options
+function Omnipkg() {
+    case "$1" in
+        "-a")
+            global_installation "$2" && echo "Installation of $2 completed successfully!"
+            ;;
+        "-u")
+            update_all
+            ;;
+        *)
+            echo "Usage: $0 -a <package_name> | -u (to update all packages)"
+            ;;
+    esac
+}
+
+# Ensure script is run as root
+check_root
+
+# Call the main function with all script arguments
+Omnipkg "$@"
