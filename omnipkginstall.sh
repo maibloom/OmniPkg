@@ -6,12 +6,13 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# Move the Omnipkg file to /usr/local/bin
+# Define the installation path
 INSTALL_PATH="/usr/local/bin/omnipkg"
 
 echo "Installing Omnipkg to $INSTALL_PATH..."
-if sudo mv omnipkg "$INSTALL_PATH" && sudo mv version.txt "$INSTALL_PATH"; then
-    sudo chmod +x "$INSTALL_PATH"
+# Move the omnipkg script and version file to the installation path
+if mv omnipkg "$INSTALL_PATH" && mv version.txt "$INSTALL_PATH/version.txt"; then
+    chmod +x "$INSTALL_PATH"
     echo "Omnipkg installed successfully and is now executable."
 else
     echo "Installation failed. Could not move Omnipkg to $INSTALL_PATH."
