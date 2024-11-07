@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Exit immediately if a command exits with a non-zero status
+set -e
+trap 'echo "An error occurred. Exiting..."; exit 1' ERR
+
 # Function to check for root privileges
 function check_root() {
     if [[ "$EUID" -ne 0 ]]; then
@@ -8,54 +12,75 @@ function check_root() {
     fi
 }
 
+# Function to install Snap if not installed
 function snap_install() {
     if ! command -v snap &> /dev/null; then
-        echo "Snap is not installed. Installing Snap..."
-        git clone https://aur.archlinux.org/snapd.git
-        cd snapd || exit 1
-        makepkg -si
-        systemctl enable --now snapd.socket
-        systemctl enable --now snapd.apparmor.service
-        ln -s /var/lib/snapd/snap /snap
-        cd .. || exit 1
+        echo "Snap is not installed. Attempting to install Snap..."
+        if ! git clone https://aur.archlinux.org/snapd.git; then
+            echo "Failed to clone snapd repository."
+            return 1
+        fi
+
+        pushd snapd || exit 1
+        if ! makepkg -si --noconfirm; then
+            echo "Failed to build and install Snap."
+            popd
+            rm -rf snapd
+            return 1
+        fi
+        systemctl enable --now snapd.socket snapd.apparmor.service || return 1
+        ln -s /var/lib/snapd/snap /snap || return 1
+        popd
         rm -rf snapd
     fi
 
     if snap install "$1"; then
-        echo "$1 has been installed successfully with Snapcraft."
+        echo "$1 has been installed successfully with Snap."
     else
-        echo "$1 has FAILED to get installed with Snapcraft."
+        echo "$1 installation failed with Snap."
         return 1
     fi
 }
 
+# Function to install packages with Pacman
 function pacman_install() {
     if pacman -S --noconfirm "$1"; then
         echo "$1 has been installed successfully with Pacman."
     else
-        echo "$1 has FAILED to get installed with Pacman."
+        echo "$1 installation failed with Pacman."
         return 1
     fi
 }
 
+# Function to install Yay if not installed and install packages
 function yay_install() {
     if ! command -v yay &> /dev/null; then
-        echo "Yay is not installed. Installing Yay..."
-        git clone https://aur.archlinux.org/yay.git
-        cd yay || exit 1
-        makepkg -si
-        cd .. || exit 1
+        echo "Yay is not installed. Attempting to install Yay..."
+        if ! git clone https://aur.archlinux.org/yay.git; then
+            echo "Failed to clone Yay repository."
+            return 1
+        fi
+
+        pushd yay || exit 1
+        if ! makepkg -si --noconfirm; then
+            echo "Failed to build and install Yay."
+            popd
+            rm -rf yay
+            return 1
+        fi
+        popd
         rm -rf yay
     fi
 
     if yay -S --noconfirm "$1"; then
         echo "$1 has been installed successfully with Yay."
     else
-        echo "$1 has FAILED to get installed with Yay."
+        echo "$1 installation failed with Yay."
         return 1
     fi
 }
 
+# Function to install packages with Apt
 function apt_install() {
     if ! command -v apt &> /dev/null; then
         echo "Apt is not available on this system. Skipping..."
@@ -65,55 +90,59 @@ function apt_install() {
     if apt-get install -y "$1"; then
         echo "$1 has been installed successfully with Apt."
     else
-        echo "$1 has FAILED to get installed with Apt."
+        echo "$1 installation failed with Apt."
         return 1
     fi
 }
 
+# Function to try global installation with available package managers
 function global_installation() {
-    echo "Attempting to install $1 with Snap..."
-    if snap_install "$1"; then return 0; fi
+    echo "Attempting to install $1 with available package managers..."
 
-    echo "Attempting to install $1 with Pacman..."
-    if pacman_install "$1"; then return 0; fi
+    snap_install "$1" && return 0
+    pacman_install "$1" && return 0
+    yay_install "$1" && return 0
+    apt_install "$1" && return 0
 
-    echo "Attempting to install $1 with Yay..."
-    if yay_install "$1"; then return 0; fi
-
-    echo "Attempting to install $1 with Apt..."
-    if apt_install "$1"; then return 0; fi
-
-    echo "Installation of $1 FAILED with all package managers."
+    echo "Installation of $1 failed with all package managers."
     return 1
 }
 
+# Function to update all packages with all available package managers
 function update_all() {
     echo "Updating all packages with Snap, Pacman, Yay, and Apt..."
 
     if command -v snap &> /dev/null; then
         echo "Updating Snap packages..."
-        snap refresh
+        snap refresh || echo "Snap update failed."
     fi
 
-    echo "Updating Pacman packages..."
-    pacman -Syu --noconfirm
+    if command -v pacman &> /dev/null; then
+        echo "Updating Pacman packages..."
+        pacman -Syu --noconfirm || echo "Pacman update failed."
+    fi
 
     if command -v yay &> /dev/null; then
         echo "Updating Yay packages..."
-        yay -Syu --noconfirm
+        yay -Syu --noconfirm || echo "Yay update failed."
     fi
 
     if command -v apt &> /dev/null; then
         echo "Updating Apt packages..."
-        apt-get update && apt-get upgrade -y
+        apt-get update && apt-get upgrade -y || echo "Apt update failed."
     fi
 
-    echo "All packages have been updated successfully."
+    echo "All updates attempted."
 }
 
+# Main function for package installation or update based on input arguments
 function Omnipkg() {
     case "$1" in
         "-a")
+            if [[ -z "$2" ]]; then
+                echo "Please provide a package name with the -a option."
+                exit 1
+            fi
             global_installation "$2" && echo "Installation of $2 completed successfully!"
             ;;
         "-u")
@@ -121,6 +150,7 @@ function Omnipkg() {
             ;;
         *)
             echo "Usage: $0 -a <package_name> | -u (to update all packages)"
+            exit 1
             ;;
     esac
 }
