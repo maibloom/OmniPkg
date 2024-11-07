@@ -87,22 +87,24 @@ function global_installation() {
     return 1
 }
 
-function upgrade(){
+function upgrade() {
     mkdir -p /tmp/omnipkg_updatecheck
     CURRENT_VER=$(cat /usr/local/bin/omnipkg/version.txt)
-    wget https://github.com/devtracer/OmniPkg/blob/main/version.txt
-    mv version.txt /tmp/omnipkg_updatecheck
+    
+    # Fetch the latest version file
+    wget -q https://raw.githubusercontent.com/devtracer/OmniPkg/main/version.txt -O /tmp/omnipkg_updatecheck/version.txt
+    
     LATEST_VER=$(cat /tmp/omnipkg_updatecheck/version.txt)
     if [[ "$CURRENT_VER" != "$LATEST_VER" ]]; then
-        git clone https://github.com/devtracer/Omnipkg.git
-        mvdir Omnipkg/ /tmp/omnipkg_updatecheck
-        cd /tmp/omnipkg_updatecheck/Omnipkg
+        echo "New version detected. Upgrading Omnipkg..."
+        git clone https://github.com/devtracer/Omnipkg.git /tmp/omnipkg_updatecheck/Omnipkg
+        cd /tmp/omnipkg_updatecheck/Omnipkg || exit 1
         chmod +x omniupdater.sh
         ./omniupdater.sh
     else
         echo "You're using the latest version of Omnipkg."
     fi
-    
+}
 
 function update_all() {
     echo "Updating all packages with Snap, Pacman, Yay, and Apt..."
@@ -138,8 +140,9 @@ function Omnipkg() {
             ;;
         "-ug")
             upgrade
-        "*")
-            echo "Usage: $0 -a <package_name> | -u (to update all packages)"
+            ;;
+        *)
+            echo "Usage: $0 -a <package_name> | -u (to update all packages) | -ug (to upgrade Omnipkg)"
             ;;
     esac
 }
