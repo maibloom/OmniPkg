@@ -138,7 +138,7 @@ function Omnipkg() {
             ;;
         "-ug")
             upgrade
-        *)
+        "*")
             echo "Usage: $0 -a <package_name> | -u (to update all packages)"
             ;;
     esac
