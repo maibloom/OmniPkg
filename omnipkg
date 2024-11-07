@@ -22,7 +22,7 @@ function snap_install() {
         fi
 
         pushd snapd || exit 1
-        if ! makepkg -si --noconfirm; then
+        if ! sudo -u "$SUDO_USER" makepkg -si --noconfirm; then
             echo "Failed to build and install Snap."
             popd
             rm -rf snapd
@@ -44,6 +44,11 @@ function snap_install() {
 
 # Function to install packages with Pacman
 function pacman_install() {
+    if [[ -f /var/lib/pacman/db.lck ]]; then
+        echo "Pacman database is locked. Removing lock file..."
+        rm /var/lib/pacman/db.lck || { echo "Failed to remove lock file"; return 1; }
+    fi
+
     if pacman -S --noconfirm "$1"; then
         echo "$1 has been installed successfully with Pacman."
     else
@@ -62,7 +67,7 @@ function yay_install() {
         fi
 
         pushd yay || exit 1
-        if ! makepkg -si --noconfirm; then
+        if ! sudo -u "$SUDO_USER" makepkg -si --noconfirm; then
             echo "Failed to build and install Yay."
             popd
             rm -rf yay
@@ -72,7 +77,7 @@ function yay_install() {
         rm -rf yay
     fi
 
-    if yay -S --noconfirm "$1"; then
+    if sudo -u "$SUDO_USER" yay -S --noconfirm "$1"; then
         echo "$1 has been installed successfully with Yay."
     else
         echo "$1 installation failed with Yay."
@@ -124,7 +129,7 @@ function update_all() {
 
     if command -v yay &> /dev/null; then
         echo "Updating Yay packages..."
-        yay -Syu --noconfirm || echo "Yay update failed."
+        sudo -u "$SUDO_USER" yay -Syu --noconfirm || echo "Yay update failed."
     fi
 
     if command -v apt &> /dev/null; then
