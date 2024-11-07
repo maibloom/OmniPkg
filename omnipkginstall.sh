@@ -10,7 +10,7 @@ fi
 INSTALL_PATH="/usr/local/bin/omnipkg"
 
 echo "Installing Omnipkg to $INSTALL_PATH..."
-if sudo mv omnipkg "$INSTALL_PATH"; then
+if sudo mv omnipkg "$INSTALL_PATH" && sudo mv version.txt "$INSTALL_PATH"; then
     sudo chmod +x "$INSTALL_PATH"
     echo "Omnipkg installed successfully and is now executable."
 else
