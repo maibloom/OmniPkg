@@ -2,166 +2,94 @@
 
 # Exit immediately if a command exits with a non-zero status
 set -e
-trap 'echo "An error occurred. Exiting..."; exit 1' ERR
 
 # Function to check for root privileges
-function check_root() {
+check_root() {
     if [[ "$EUID" -ne 0 ]]; then
-        echo "This script requires root privileges. Please run it as root or with sudo."
+        echo "Please run as root or with sudo."
         exit 1
     fi
 }
 
-# Function to install Snap if not installed
-function snap_install() {
-    if ! command -v snap &> /dev/null; then
-        echo "Snap is not installed. Attempting to install Snap..."
-        if ! git clone https://aur.archlinux.org/snapd.git; then
-            echo "Failed to clone snapd repository."
-            return 1
-        fi
+# Function to install a package manager if not installed
+install_package_manager() {
+    local manager="$1"
+    local install_command="$2"
 
-        pushd snapd || exit 1
-        if ! sudo -u "$SUDO_USER" makepkg -si --noconfirm; then
-            echo "Failed to build and install Snap."
-            popd
-            rm -rf snapd
-            return 1
-        fi
-        systemctl enable --now snapd.socket snapd.apparmor.service || return 1
-        ln -s /var/lib/snapd/snap /snap || return 1
-        popd
-        rm -rf snapd
-    fi
-
-    if snap install "$1"; then
-        echo "$1 has been installed successfully with Snap."
+    if ! command -v "$manager" &> /dev/null; then
+        echo "$manager is not installed. Installing..."
+        eval "$install_command"
     else
-        echo "$1 installation failed with Snap."
-        return 1
+        echo "$manager is already installed."
     fi
 }
 
-# Function to install packages with Pacman
-function pacman_install() {
-    if [[ -f /var/lib/pacman/db.lck ]]; then
-        echo "Pacman database is locked. Removing lock file..."
-        rm /var/lib/pacman/db.lck || { echo "Failed to remove lock file"; return 1; }
-    fi
-
-    if pacman -S --noconfirm "$1"; then
-        echo "$1 has been installed successfully with Pacman."
-    else
-        echo "$1 installation failed with Pacman."
-        return 1
-    fi
-}
-
-# Function to install Yay if not installed and install packages
-function yay_install() {
-    if ! command -v yay &> /dev/null; then
-        echo "Yay is not installed. Attempting to install Yay..."
-        if ! git clone https://aur.archlinux.org/yay.git; then
-            echo "Failed to clone Yay repository."
-            return 1
-        fi
-
-        pushd yay || exit 1
-        if ! sudo -u "$SUDO_USER" makepkg -si --noconfirm; then
-            echo "Failed to build and install Yay."
-            popd
-            rm -rf yay
-            return 1
-        fi
-        popd
-        rm -rf yay
-    fi
-
-    if sudo -u "$SUDO_USER" yay -S --noconfirm "$1"; then
-        echo "$1 has been installed successfully with Yay."
-    else
-        echo "$1 installation failed with Yay."
-        return 1
-    fi
-}
-
-# Function to install packages with Apt
-function apt_install() {
-    if ! command -v apt &> /dev/null; then
-        echo "Apt is not available on this system. Skipping..."
-        return 1
-    fi
-
-    if apt-get install -y "$1"; then
-        echo "$1 has been installed successfully with Apt."
-    else
-        echo "$1 installation failed with Apt."
-        return 1
-    fi
-}
-
-# Function to try global installation with available package managers
-function global_installation() {
-    echo "Attempting to install $1 with available package managers..."
-
-    snap_install "$1" && return 0
-    pacman_install "$1" && return 0
-    yay_install "$1" && return 0
-    apt_install "$1" && return 0
-
-    echo "Installation of $1 failed with all package managers."
-    return 1
-}
-
-# Function to update all packages with all available package managers
-function update_all() {
-    echo "Updating all packages with Snap, Pacman, Yay, and Apt..."
-
-    if command -v snap &> /dev/null; then
-        echo "Updating Snap packages..."
-        snap refresh || echo "Snap update failed."
-    fi
-
+# Function to update the package database for each manager
+update_database() {
     if command -v pacman &> /dev/null; then
-        echo "Updating Pacman packages..."
-        pacman -Syu --noconfirm || echo "Pacman update failed."
+        pacman -Sy --noconfirm
     fi
 
     if command -v yay &> /dev/null; then
-        echo "Updating Yay packages..."
-        sudo -u "$SUDO_USER" yay -Syu --noconfirm || echo "Yay update failed."
+        yay -Sy --noconfirm
     fi
 
-    if command -v apt &> /dev/null; then
-        echo "Updating Apt packages..."
-        apt-get update && apt-get upgrade -y || echo "Apt update failed."
+    echo "Package databases updated."
+}
+
+# Function to install a package using available package managers
+install_package() {
+    local package="$1"
+
+    echo "Installing $package..."
+
+    if command -v pacman &> /dev/null; then
+        pacman -S --noconfirm "$package" && return
     fi
 
-    echo "All updates attempted."
+    if command -v yay &> /dev/null; then
+        yay -S --noconfirm "$package" && return
+    fi
+
+    echo "Failed to install $package with any package manager."
 }
 
-# Main function for package installation or update based on input arguments
-function Omnipkg() {
-    case "$1" in
-        "-a")
-            shift # Remove the '-a' flag from the arguments
-            if [[ $# -eq 0 ]]; then
-                echo "Please provide at least one package name with the -a option."
-                exit 1
-            fi
-            for package in "$@"; do
-                global_installation "$package" && echo "Installation of $package completed successfully!"
-            done
-            ;;
-        "-u")
-            update_all
-            ;;
-        *)
-            echo "Usage: $0 -a <package_name(s)> | -u (to update all packages)"
-            exit 1
-            ;;
-    esac
+# Function to update all packages
+update_packages() {
+    echo "Updating packages..."
+
+    if command -v pacman &> /dev/null; then
+        pacman -Syu --noconfirm
+    fi
+
+    if command -v yay &> /dev/null; then
+        yay -Syu --noconfirm
+    fi
+
+    echo "All packages updated."
 }
 
+# Main script logic
 check_root
-Omnipkg "$@"
+
+# Install package managers if not installed
+install_package_manager "yay" "pacman -S --noconfirm yay"
+
+# Update package databases
+update_database
+
+case "$1" in
+    install)
+        shift
+        for package in "$@"; do
+            install_package "$package"
+        done
+        ;;
+    update)
+        update_packages
+        ;;
+    *)
+        echo "Usage: $0 {install|update} [package_name...]"
+        exit 1
+        ;;
+esac
