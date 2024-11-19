@@ -1,6 +1,11 @@
 import subprocess
 import sys
-from omnipkgupdater import omniupdate
+
+# Try importing omnipkgupdater (handle if not available)
+try:
+    from omnipkgupdater import omniupdate
+except ImportError:
+    omniupdate = None  # Handle the absence of omniupdate function
 
 __version__ = '1.0.0'
 
@@ -25,27 +30,31 @@ class PackageManagers:
             "zypper": "sudo zypper install",
             "brew": "brew install"
         }
-
+        
     def check_and_install(self, manager_name):
         """Check if the package manager is installed, install it if not."""
         try:
             # Try running the existence check command for the package manager
             subprocess.run(self.install_commands[manager_name], shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print(f"{manager_name} is already installed.")
         except subprocess.CalledProcessError:
             print(f"{manager_name} not found. Installing {manager_name}...")
             # Install the package manager if it's not found
             if manager_name == "pacman":
-                subprocess.run("sudo pacman -S pacman", shell=True, check=True)
-            elif manager_name == "apt":
-                subprocess.run("sudo apt update && sudo apt install apt", shell=True, check=True)
-            elif manager_name == "dnf":
-                subprocess.run("sudo dnf install dnf", shell=True, check=True)
-            elif manager_name == "yum":
-                subprocess.run("sudo yum install yum", shell=True, check=True)
-            elif manager_name == "zypper":
-                subprocess.run("sudo zypper install zypper", shell=True, check=True)
-            elif manager_name == "brew":
-                subprocess.run("/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"", shell=True, check=True)
+                subprocess.run("sudo pacman -S pacman --noconfirm", shell=True, check=True)
+            elif manager_name == "yay":
+                print("Installing yay (AUR helper)...")
+                # Ensure git and curl are available first
+                self.check_and_install("git")
+                self.check_and_install("curl")
+                subprocess.run("git clone https://aur.archlinux.org/yay.git", shell=True, check=True)
+                subprocess.run("cd yay && makepkg -si --noconfirm", shell=True, check=True)
+            elif manager_name == "git":
+                subprocess.run("sudo pacman -S git --noconfirm", shell=True, check=True)
+            elif manager_name == "curl":
+                subprocess.run("sudo pacman -S curl --noconfirm", shell=True, check=True)
+            else:
+                print(f"{manager_name} is not supported for automatic installation on Arch Linux.")
 
     def install(self, manager_name, packages):
         """Install the specified packages using the selected package manager."""
@@ -94,11 +103,11 @@ class PackageManagers:
         raise EnvironmentError("No supported package manager found on this system!")
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: sudo omnipkg -i <package1> [<package2> ...] | sudo omnipkg -u")
+    if len(sys.argv) < 2:
+        print("Usage: sudo omnipkg -i <package1> [<package2> ...] | sudo omnipkg -u | sudo omnipkg -uo")
         sys.exit(1)
 
-    # Determine the action: install (-i) or update (-u)
+    # Determine the action: install (-i), update (-u) or update using omniupdate (-uo)
     action = sys.argv[1]
     
     # Determine package manager
@@ -107,6 +116,9 @@ def main():
 
     if action == "-i":
         # Install the specified packages
+        if len(sys.argv) < 3:
+            print("Please provide at least one package to install.")
+            sys.exit(1)
         packages = sys.argv[2:]
         print(f"Installing {', '.join(packages)} using {manager_name}...")
         package_manager.install(manager_name, packages)
@@ -116,11 +128,13 @@ def main():
         print(f"Updating all packages using {manager_name}...")
         package_manager.update(manager_name)
         
-    elif action == "-uo":
+    elif action == "-uo" and omniupdate:
+        # Call omniupdate if it's available
+        print("Running update process using omniupdate...")
         omniupdate()
     
     else:
-        print("Invalid action. Use -i to install or -u to update.")
+        print("Invalid action. Use -i to install, -u to update, or -uo to update using omniupdate.")
         sys.exit(1)
 
 if __name__ == "__main__":
