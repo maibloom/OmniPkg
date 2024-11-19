@@ -18,7 +18,10 @@ install_package_manager() {
 
     if ! command -v "$manager" &> /dev/null; then
         echo "$manager is not installed. Installing..."
-        eval "$install_command"
+        if ! eval "$install_command"; then
+            echo "Failed to install $manager. Please install it manually and try again."
+            exit 1
+        fi
     else
         echo "$manager is already installed."
     fi
@@ -32,6 +35,30 @@ update_database() {
 
     if command -v yay &> /dev/null; then
         yay -Sy --noconfirm
+    fi
+
+    if command -v apt-get &> /dev/null; then
+        apt-get update -y
+    fi
+
+    if command -v dnf &> /dev/null; then
+        dnf check-update -y
+    fi
+
+    if command -v zypper &> /dev/null; then
+        zypper refresh
+    fi
+
+    if command -v brew &> /dev/null; then
+        brew update
+    fi
+
+    if command -v snap &> /dev/null; then
+        snap refresh
+    fi
+
+    if command -v flatpak &> /dev/null; then
+        flatpak update
     fi
 
     echo "Package databases updated."
@@ -51,6 +78,30 @@ install_package() {
         yay -S --noconfirm "$package" && return
     fi
 
+    if command -v apt-get &> /dev/null; then
+        apt-get install -y "$package" && return
+    fi
+
+    if command -v dnf &> /dev/null; then
+        dnf install -y "$package" && return
+    fi
+
+    if command -v zypper &> /dev/null; then
+        zypper install -y "$package" && return
+    fi
+
+    if command -v brew &> /dev/null; then
+        brew install "$package" && return
+    fi
+
+    if command -v snap &> /dev/null; then
+        snap install "$package" && return
+    fi
+
+    if command -v flatpak &> /dev/null; then
+        flatpak install -y "$package" && return
+    fi
+
     echo "Failed to install $package with any package manager."
 }
 
@@ -66,6 +117,30 @@ update_packages() {
         yay -Syu --noconfirm
     fi
 
+    if command -v apt-get &> /dev/null; then
+        apt-get upgrade -y
+    fi
+
+    if command -v dnf &> /dev/null; then
+        dnf upgrade -y
+    fi
+
+    if command -v zypper &> /dev/null; then
+        zypper update
+    fi
+
+    if command -v brew &> /dev/null; then
+        brew upgrade
+    fi
+
+    if command -v snap &> /dev/null; then
+        snap refresh
+    fi
+
+    if command -v flatpak &> /dev/null; then
+        flatpak update
+    fi
+
     echo "All packages updated."
 }
 
@@ -74,6 +149,11 @@ check_root
 
 # Install package managers if not installed
 install_package_manager "yay" "pacman -S --noconfirm yay"
+install_package_manager "dnf" "apt-get install -y dnf"
+install_package_manager "zypper" "apt-get install -y zypper"
+install_package_manager "brew" "apt-get install -y linuxbrew-wrapper"
+install_package_manager "snap" "apt-get install -y snapd"
+install_package_manager "flatpak" "apt-get install -y flatpak"
 
 # Update package databases
 update_database
