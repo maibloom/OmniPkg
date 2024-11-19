@@ -7,7 +7,7 @@ try:
 except ImportError:
     omniupdate = None  # Handle the absence of omniupdate function
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 class PackageManagers:
     def __init__(self):
