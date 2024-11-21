@@ -1,0 +1,218 @@
+#!/bin/bash
+
+set -e  # Exit on error
+
+# Constants
+LOG_FILE="/var/log/package_manager.log"
+
+# Functions
+check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "Please run as root or with sudo."
+        exit 1
+    fi
+}
+
+log() {
+    local level="$1"
+    local message="$2"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "$timestamp - [$level] - $message" | tee -a "$LOG_FILE"
+}
+
+# Package manager commands
+declare -A PM_COMMANDS=(
+    ["pacman_list"]="pacman -Qq"
+    ["yay_list"]="yay -Qq"
+    ["apt_list"]="dpkg --get-selections | awk '{print \$1}'"
+    ["dnf_list"]="dnf list installed | awk 'NR>2 {print \$1}'"
+    ["zypper_list"]="zypper se --installed-only | awk 'NR>2 {print \$2}'"
+    ["brew_list"]="brew list"
+    ["snap_list"]="snap list | awk 'NR>1 {print \$1}'"
+    ["flatpak_list"]="flatpak list | awk '{print \$1}'"
+)
+
+declare -A INSTALL_COMMANDS=(
+    ["pacman"]="pacman -S --noconfirm"
+    ["yay"]="yay -S --noconfirm"
+    ["apt"]="apt-get install -y"
+    ["dnf"]="dnf install -y"
+    ["zypper"]="zypper install -y"
+    ["brew"]="brew install"
+    ["snap"]="snap install"
+    ["flatpak"]="flatpak install -y"
+)
+
+install_package_manager() {
+    local manager="$1"
+    local pacman_command="pacman -S --noconfirm $manager"
+
+    if command -v "$manager" &> /dev/null; then
+        log "INFO" "$manager is already installed."
+        return 0
+    fi
+
+    if command -v pacman &> /dev/null; then
+        log "INFO" "$manager not found. Attempting to install using pacman..."
+        if eval "$pacman_command"; then
+            log "INFO" "Successfully installed $manager."
+        else
+            log "ERROR" "Failed to install $manager with pacman. Please install it manually."
+        fi
+    else
+        log "ERROR" "Pacman is unavailable to install $manager. Please install it manually."
+    fi
+}
+
+run_command() {
+    local command="$1"
+    if eval "$command"; then
+        log "INFO" "Successfully executed: $command"
+    else
+        log "ERROR" "Error executing: $command"
+        exit 1
+    fi
+}
+
+detect_managers() {
+    local available_managers=()
+    for manager in "${!PM_COMMANDS[@]}"; do
+        if command -v "${manager/_list/}" &> /dev/null; then
+            available_managers+=("${manager/_list/}")
+        fi
+    done
+    echo "${available_managers[@]}"
+}
+
+create_backup() {
+    log "INFO" "Creating backup of installed packages..."
+
+    # Ask the user where to save the file
+    read -p "Enter the backup file path (default: installed_packages_backup.txt): " backup_file
+    backup_file="${backup_file:-installed_packages_backup.txt}"
+
+    # Ensure valid file path
+    if [[ ! -w "$(dirname "$backup_file")" ]]; then
+        log "ERROR" "Cannot write to the specified backup file location. Please check permissions."
+        exit 1
+    fi
+
+    > "$backup_file"  # Empty the backup file
+    for manager in $(detect_managers); do
+        list_command="${PM_COMMANDS["${manager}_list"]}"
+        if command -v "$manager" &> /dev/null; then
+            eval "$list_command" >> "$backup_file"
+        fi
+    done
+    sort -u -o "$backup_file" "$backup_file"  # Remove duplicates and sort
+    log "INFO" "Backup created at $backup_file."
+}
+
+batch_install() {
+    local input_file="$1"
+    if [[ -z "$input_file" ]]; then
+        log "ERROR" "Error: No input file provided for batch installation."
+        exit 1
+    fi
+
+    if [[ ! -f "$input_file" ]]; then
+        log "ERROR" "Error: File $input_file not found."
+        exit 1
+    fi
+
+    log "INFO" "Installing packages from $input_file..."
+    while IFS= read -r package; do
+        log "INFO" "Processing package: $package"
+        for manager in $(detect_managers); do
+            if run_command "${INSTALL_COMMANDS["${manager}"]} $package"; then
+                log "INFO" "Successfully installed $package using $manager."
+                break
+            fi
+        done
+    done < "$input_file"
+    log "INFO" "Batch installation completed."
+}
+
+update_database() {
+    log "INFO" "Updating package databases..."
+    for manager in $(detect_managers); do
+        case "$manager" in
+            pacman) run_command "pacman -Sy --noconfirm" ;;
+            yay) run_command "yay -Sy --noconfirm" ;;
+            apt) run_command "apt-get update" ;;
+            dnf) run_command "dnf check-update -y" ;;
+            zypper) run_command "zypper refresh" ;;
+            brew) run_command "brew update" ;;
+            snap) run_command "snap refresh" ;;
+            flatpak) run_command "flatpak update" ;;
+        esac
+    done
+    log "INFO" "Package databases updated."
+}
+
+install_package() {
+    local package="$1"
+    log "INFO" "Installing $package..."
+    for manager in $(detect_managers); do
+        if run_command "${INSTALL_COMMANDS["${manager}"]} $package"; then
+            log "INFO" "$package installed with $manager."
+            return
+        fi
+    done
+    log "ERROR" "Failed to install $package with any package manager."
+    exit 1
+}
+
+update_packages() {
+    log "INFO" "Updating all packages..."
+    for manager in $(detect_managers); do
+        case "$manager" in
+            pacman) run_command "pacman -Syu --noconfirm" ;;
+            yay) run_command "yay -Syu --noconfirm" ;;
+            apt) run_command "apt-get upgrade -y" ;;
+            dnf) run_command "dnf upgrade -y" ;;
+            zypper) run_command "zypper update" ;;
+            brew) run_command "brew upgrade" ;;
+            snap) run_command "snap refresh" ;;
+            flatpak) run_command "flatpak update" ;;
+        esac
+    done
+    log "INFO" "All packages updated."
+}
+
+show_help() {
+    echo "Usage: $0 {install|update|backup|batch|help} [args...]"
+    echo
+    echo "Commands:"
+    echo "  install [packages...]         Install specified packages"
+    echo "  update                        Update all installed packages"
+    echo "  backup                        Create a backup of all installed packages"
+    echo "  batch <input_file>            Install packages listed in the specified input file"
+    echo "  help                          Show this help message"
+}
+
+# Main script logic
+check_root
+
+case "$1" in
+    install)
+        shift
+        for package in "$@"; do
+            install_package "$package"
+        done
+        ;;
+    update)
+        update_packages
+        ;;
+    backup)
+        create_backup
+        ;;
+    batch)
+        shift
+        batch_install "$1"
+        ;;
+    help|*)
+        show_help
+        ;;
+esac
