@@ -22,4 +22,4 @@ chmod +x Installer.sh && ./Installer.sh
 | `install`    | `omnipkg install <package1> <package2> ... <packagen>` | Install specified package(s) using the available package manager(s).      |
 | `update`     | `omnipkg update`                                   | Updates all installed packages using the available package manager(s).     |
 | `backup`     | `omnipkg backup`                                   | Backs up all installed packages into a `.txt` file, allowing you to restore them later. |
-| `batch`      | `omnipkg batch /path/to/packagelist.txt`           | Installs packages listed in a `.txt` file, allowing you to restore packages from a backup. |
+| `batch`      | `omnipkg batch /path/to/packagelist.txt`           | Installs packages listed in a `.txt` file, allowing you to restore packages from a backup. |          
