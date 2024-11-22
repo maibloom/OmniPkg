@@ -21,59 +21,66 @@ log() {
     echo "$timestamp - [$level] - $message" | tee -a "$LOG_FILE"
 }
 
+check_internet() {
+    log "INFO" "Checking internet connectivity..."
+    if ! ping -q -c 1 -W 1 8.8.8.8 &> /dev/null; then
+        log "ERROR" "No internet connection detected. Please check your network and try again."
+        exit 1
+    fi
+    log "INFO" "Internet connection is active."
+}
+
+install_aur_helper() {
+    local helper="$1"
+
+    if command -v "$helper" &> /dev/null; then
+        log "INFO" "$helper is already installed."
+        return 0
+    fi
+
+    log "INFO" "$helper not found. Attempting to install using pacman..."
+    case "$helper" in
+        yay)
+            pacman -S --noconfirm --needed yay || log "ERROR" "Failed to install $helper. Install it manually."
+            ;;
+        paru)
+            pacman -S --noconfirm --needed paru || log "ERROR" "Failed to install $helper. Install it manually."
+            ;;
+        trizen)
+            pacman -S --noconfirm --needed trizen || log "ERROR" "Failed to install $helper. Install it manually."
+            ;;
+        pikaur)
+            pacman -S --noconfirm --needed pikaur || log "ERROR" "Failed to install $helper. Install it manually."
+            ;;
+        *)
+            log "ERROR" "Unknown AUR helper: $helper. Cannot install."
+            ;;
+    esac
+}
+
+check_and_install_aur_helpers() {
+    local helpers=("yay" "paru" "trizen" "pikaur")
+    for helper in "${helpers[@]}"; do
+        install_aur_helper "$helper"
+    done
+}
+
 # Package manager commands
 declare -A PM_COMMANDS=(
     ["pacman_list"]="pacman -Qq"
     ["yay_list"]="yay -Qq"
-    ["apt_list"]="dpkg --get-selections | awk '{print \$1}'"
-    ["dnf_list"]="dnf list installed | awk 'NR>2 {print \$1}'"
-    ["zypper_list"]="zypper se --installed-only | awk 'NR>2 {print \$2}'"
-    ["brew_list"]="brew list"
-    ["snap_list"]="snap list | awk 'NR>1 {print \$1}'"
-    ["flatpak_list"]="flatpak list | awk '{print \$1}'"
+    ["paru_list"]="paru -Qq"
+    ["trizen_list"]="trizen -Qq"
+    ["pikaur_list"]="pikaur -Qq"
 )
 
 declare -A INSTALL_COMMANDS=(
     ["pacman"]="pacman -S --noconfirm"
     ["yay"]="yay -S --noconfirm"
-    ["apt"]="apt-get install -y"
-    ["dnf"]="dnf install -y"
-    ["zypper"]="zypper install -y"
-    ["brew"]="brew install"
-    ["snap"]="snap install"
-    ["flatpak"]="flatpak install -y"
+    ["paru"]="paru -S --noconfirm"
+    ["trizen"]="trizen -S --noconfirm"
+    ["pikaur"]="pikaur -S --noconfirm"
 )
-
-install_package_manager() {
-    local manager="$1"
-    local pacman_command="pacman -S --noconfirm $manager"
-
-    if command -v "$manager" &> /dev/null; then
-        log "INFO" "$manager is already installed."
-        return 0
-    fi
-
-    if command -v pacman &> /dev/null; then
-        log "INFO" "$manager not found. Attempting to install using pacman..."
-        if eval "$pacman_command"; then
-            log "INFO" "Successfully installed $manager."
-        else
-            log "ERROR" "Failed to install $manager with pacman. Please install it manually."
-        fi
-    else
-        log "ERROR" "Pacman is unavailable to install $manager. Please install it manually."
-    fi
-}
-
-run_command() {
-    local command="$1"
-    if eval "$command"; then
-        log "INFO" "Successfully executed: $command"
-    else
-        log "ERROR" "Error executing: $command"
-        exit 1
-    fi
-}
 
 detect_managers() {
     local available_managers=()
@@ -83,72 +90,6 @@ detect_managers() {
         fi
     done
     echo "${available_managers[@]}"
-}
-
-create_backup() {
-    log "INFO" "Creating backup of installed packages..."
-
-    # Ask the user where to save the file
-    read -p "Enter the backup file path (default: installed_packages_backup.txt): " backup_file
-    backup_file="${backup_file:-installed_packages_backup.txt}"
-
-    # Ensure valid file path
-    if [[ ! -w "$(dirname "$backup_file")" ]]; then
-        log "ERROR" "Cannot write to the specified backup file location. Please check permissions."
-        exit 1
-    fi
-
-    > "$backup_file"  # Empty the backup file
-    for manager in $(detect_managers); do
-        list_command="${PM_COMMANDS["${manager}_list"]}"
-        if command -v "$manager" &> /dev/null; then
-            eval "$list_command" >> "$backup_file"
-        fi
-    done
-    sort -u -o "$backup_file" "$backup_file"  # Remove duplicates and sort
-    log "INFO" "Backup created at $backup_file."
-}
-
-batch_install() {
-    local input_file="$1"
-    if [[ -z "$input_file" ]]; then
-        log "ERROR" "Error: No input file provided for batch installation."
-        exit 1
-    fi
-
-    if [[ ! -f "$input_file" ]]; then
-        log "ERROR" "Error: File $input_file not found."
-        exit 1
-    fi
-
-    log "INFO" "Installing packages from $input_file..."
-    while IFS= read -r package; do
-        log "INFO" "Processing package: $package"
-        for manager in $(detect_managers); do
-            if run_command "${INSTALL_COMMANDS["${manager}"]} $package"; then
-                log "INFO" "Successfully installed $package using $manager."
-                break
-            fi
-        done
-    done < "$input_file"
-    log "INFO" "Batch installation completed."
-}
-
-update_database() {
-    log "INFO" "Updating package databases..."
-    for manager in $(detect_managers); do
-        case "$manager" in
-            pacman) run_command "pacman -Sy --noconfirm" ;;
-            yay) run_command "yay -Sy --noconfirm" ;;
-            apt) run_command "apt-get update" ;;
-            dnf) run_command "dnf check-update -y" ;;
-            zypper) run_command "zypper refresh" ;;
-            brew) run_command "brew update" ;;
-            snap) run_command "snap refresh" ;;
-            flatpak) run_command "flatpak update" ;;
-        esac
-    done
-    log "INFO" "Package databases updated."
 }
 
 install_package() {
@@ -170,30 +111,37 @@ update_packages() {
         case "$manager" in
             pacman) run_command "pacman -Syu --noconfirm" ;;
             yay) run_command "yay -Syu --noconfirm" ;;
-            apt) run_command "apt-get upgrade -y" ;;
-            dnf) run_command "dnf upgrade -y" ;;
-            zypper) run_command "zypper update" ;;
-            brew) run_command "brew upgrade" ;;
-            snap) run_command "snap refresh" ;;
-            flatpak) run_command "flatpak update" ;;
+            paru) run_command "paru -Syu --noconfirm" ;;
+            trizen) run_command "trizen -Syu --noconfirm" ;;
+            pikaur) run_command "pikaur -Syu --noconfirm" ;;
         esac
     done
     log "INFO" "All packages updated."
 }
 
 show_help() {
-    echo "Usage: $0 {install|update|backup|batch|help} [args...]"
+    echo "Usage: $0 {install|update|help} [args...]"
     echo
     echo "Commands:"
-    echo "  install [packages...]         Install specified packages"
+    echo "  install <packages...>         Install specified packages"
     echo "  update                        Update all installed packages"
-    echo "  backup                        Create a backup of all installed packages"
-    echo "  batch <input_file>            Install packages listed in the specified input file"
     echo "  help                          Show this help message"
+}
+
+run_command() {
+    local command="$1"
+    if eval "$command"; then
+        log "INFO" "Successfully executed: $command"
+    else
+        log "ERROR" "Error executing: $command"
+        exit 1
+    fi
 }
 
 # Main script logic
 check_root
+check_internet
+check_and_install_aur_helpers
 
 case "$1" in
     install)
@@ -204,13 +152,6 @@ case "$1" in
         ;;
     update)
         update_packages
-        ;;
-    backup)
-        create_backup
-        ;;
-    batch)
-        shift
-        batch_install "$1"
         ;;
     help|*)
         show_help
