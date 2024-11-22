@@ -2,6 +2,8 @@
 
 Omni Package Manager helps you to search out the variety of package managers, take a backup from your installed files, and install listed files together.
 
+**This package manager is currently for Arch Linux.**
+
 # GUIDE
 
 ## How to install
