@@ -15,9 +15,10 @@ else
 fi
 echo "The source codes have stablishes successfully on the device. Continuing with the installation of Yay"
 
-if sudo pacman -Syu && sudo pacman -Syu && base-devel git && git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si && yay --version; then
+sudo pacman -Syu && sudo pacman -Syu && base-devel git && git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si
+
+if yay --version; then
     echo "Installation of Yay was successful. Now, you can use Omni Package."
 else
     echo "Installation of Yay was NOT successful. please try reinstalling it manually."
 fi
-
