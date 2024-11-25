@@ -14,7 +14,7 @@ just copy and paste this command:
 sudo pacman -Sy git
 git clone https://github.com/devtracer/OmniPkg.git
 cd OmniPkg
-chmod +x Installer.sh && ./Installer.sh
+chmod +x Installation.sh && ./Installation.sh
 ```
 
 ## Commands
