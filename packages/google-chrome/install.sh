@@ -4,4 +4,6 @@ cd google-chrome/
 
 makepkg -s
 
-sudo pacman -U --noconfirm google-chrome*.xzss
+ls
+
+sudo pacman -U --noconfirm google*
