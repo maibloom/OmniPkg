@@ -1,18 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-if [ -d "snapd" ]; then
-    echo "Removing existing snapd directory..."
-    rm -rf snapd
+if ! command -v yay >/dev/null 2>&1; then
+    echo "yay is not installed. Installing yay..."
+    git clone https://aur.archlinux.org/yay.git
+    cd yay
+    makepkg -si --noconfirm
+    cd ..
+    rm -rf yay
 fi
 
-echo "Cloning snapd from the AUR..."
-git clone https://aur.archlinux.org/snapd.git
-
-cd snapd
-
-echo "Building and installing snapd (this may take a while)..."
-yes | makepkg -si
+echo "Installing snapd using yay..."
+yay -S --noconfirm snapd
 
 echo "Enabling snapd services..."
 sudo systemctl enable --now snapd.socket
