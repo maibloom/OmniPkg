@@ -2,206 +2,234 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>       // For time(), strftime()
-#include <unistd.h>     // For chdir(), getcwd(), rmdir() (though rmdir only works on empty dirs)
+#include <unistd.h>     // For chdir(), getcwd(), remove()
 #include <sys/stat.h>   // For mkdir(), stat()
 #include <sys/types.h>  // For mode_t
-#include <errno.h>      // For errno to check mkdir errors
-#include <sys/wait.h>   // For WIFEXITED, WEXITSTATUS, WIFSIGNALED, WTERMSIG (from system() status)
+#include <errno.h>      // For errno to check errors
+#include <sys/wait.h>   // For WIFEXITED, WEXITSTATUS, WIFSIGNALED, WTERMSIG
 
+// Define these based on your repository
+#define OMNIPKG_OWNER "maibloom"
+#define OMNIPKG_REPO_NAME "OmniPkg"
+#define OMNIPKG_DEFAULT_BRANCH "main" // IMPORTANT: Change if your default branch is different
+#define APP_CACHE_DIR_NAME "omnipkg_work" 
 
-#define BASE_TEMP_DIR "/tmp/omnipkg_work" // Base directory for temporary work
-#define OMNIPKG_REPO_URL "https://github.com/maibloom/OmniPkg.git" // The actual URL to clone
-
-// Helper function to create a directory if it doesn't exist.
-// Returns 0 on success, -1 on failure.
+// Helper function to ensure a directory exists.
 static int ensure_directory_exists(const char *path) {
     struct stat st;
     if (stat(path, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
             return 0; // Directory already exists
         } else {
-            fprintf(stderr, "Error: '%s' exists but is not a directory.\n", path);
+            fprintf(stderr, "[ERROR] Path '%s' exists but is not a directory.\n", path);
             return -1;
         }
     }
 
-    // Try to create the directory
     if (mkdir(path, 0755) == 0) { // 0755 permissions: rwxr-xr-x
-        printf("Created directory: %s\n", path);
+        printf("[INFO] Created directory: %s\n", path);
         return 0;
     } else {
-        // Check if the error was that the directory already exists (e.g., race condition)
-        if (errno == EEXIST) {
-            // Verify it's indeed a directory now
+        if (errno == EEXIST) { // Possible race condition: check if it was created by another process
             if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
                 return 0;
             }
         }
-        perror("Error creating directory");
-        fprintf(stderr, "Path: %s\n", path);
+        fprintf(stderr, "[ERROR] Failed to create directory '%s': %s\n", path, strerror(errno));
         return -1;
     }
 }
 
-// Simple recursive directory removal using system("rm -rf").
-// WARNING: Be extremely careful with this function.
+// Recursively removes a directory using system("rm -rf").
 static int remove_directory_recursive(const char *path) {
     char command[1024];
-    // Basic safety checks for the path
-    if (path == NULL || strlen(path) == 0 || strcmp(path, "/") == 0 || strcmp(path, "/tmp") == 0 || strstr(path, "..") != NULL) {
-        fprintf(stderr, "Error: Invalid or dangerous path for recursive removal: %s\n", path ? path : "NULL");
+    // Basic safety checks
+    if (path == NULL || strlen(path) == 0 || strcmp(path, "/") == 0 || strstr(path, "..") != NULL) {
+        fprintf(stderr, "[ERROR] Attempted to remove invalid or dangerous path: %s\n", path ? path : "NULL");
         return -1;
     }
-    snprintf(command, sizeof(command), "rm -rf \"%s\"", path); // Quote path for safety
-    printf("Executing: %s\n", command);
+
+    snprintf(command, sizeof(command), "rm -rf \"%s\"", path);
+    printf("[INFO] Cleaning up: %s\n", command);
     int sys_status = system(command);
+
     if (sys_status != 0) {
-        fprintf(stderr, "Warning: Failed to remove directory '%s'. ", path);
+        fprintf(stderr, "[WARN] Failed to remove directory '%s'. ", path);
         if (sys_status == -1) {
-            perror("System call to rm -rf failed");
+            fprintf(stderr, "System call error: %s\n", strerror(errno));
         } else {
-            if (WIFEXITED(sys_status)) {
-                fprintf(stderr, "rm -rf exited with status %d.\n", WEXITSTATUS(sys_status));
-            } else if (WIFSIGNALED(sys_status)) {
-                fprintf(stderr, "rm -rf was terminated by signal %d.\n", WTERMSIG(sys_status));
-            } else {
-                fprintf(stderr, "rm -rf command returned non-zero status %d.\n", sys_status);
-            }
+            if (WIFEXITED(sys_status)) fprintf(stderr, "Command exited with status %d.\n", WEXITSTATUS(sys_status));
+            else if (WIFSIGNALED(sys_status)) fprintf(stderr, "Command was terminated by signal %d.\n", WTERMSIG(sys_status));
+            else fprintf(stderr, "Command returned unknown non-zero status %d.\n", sys_status);
         }
         return -1;
     }
-    printf("Successfully removed directory: %s\n", path);
+    printf("[INFO] Successfully removed directory: %s\n", path);
     return 0;
 }
 
-// run_put:
-// arg_count: number of elements in args array
-// args[0]: action ("install", "remove", "update")
-// args[1...N]: package names
 void run_put(int arg_count, char *args[]) {
-    if (arg_count < 2) { // Must have action and at least one package
-        fprintf(stderr, "run_put: Insufficient arguments. Expected <action> <package1> ...\n");
+    if (arg_count < 2) {
+        fprintf(stderr, "[ERROR] 'put' command requires an action and at least one package name.\n");
+        fprintf(stderr, "Usage: omnipkg put <install|remove|update> <package1> [package2...]\n");
         return;
     }
 
     const char *action = args[0];
+    // Corrected 'if' condition for action validation
     if (strcmp(action, "install") != 0 && strcmp(action, "remove") != 0 && strcmp(action, "update") != 0) {
-        fprintf(stderr, "run_put: Invalid action '%s'. Supported actions are 'install', 'remove', 'update'.\n", action);
+        fprintf(stderr, "[ERROR] Invalid action '%s'. Supported actions are 'install', 'remove', 'update'.\n", action);
         return;
     }
 
-    // Ensure the base temporary directory exists
-    if (ensure_directory_exists(BASE_TEMP_DIR) != 0) {
-        fprintf(stderr, "Failed to create or access base temporary directory: %s\n", BASE_TEMP_DIR);
+    char base_temp_dir_path[1024];
+    const char *home_dir = getenv("HOME");
+    if (home_dir == NULL) {
+        fprintf(stderr, "[FAIL] HOME environment variable not set. Cannot determine user's cache directory.\n");
+        return;
+    }
+
+    char user_cache_dir[1024];
+    snprintf(user_cache_dir, sizeof(user_cache_dir), "%s/.cache", home_dir);
+    if (ensure_directory_exists(user_cache_dir) != 0) {
+        fprintf(stderr, "[FAIL] Could not create or access user cache directory: %s.\n", user_cache_dir);
+        return;
+    }
+
+    snprintf(base_temp_dir_path, sizeof(base_temp_dir_path), "%s/%s", user_cache_dir, APP_CACHE_DIR_NAME);
+    printf("[INFO] Using base temporary directory: %s\n", base_temp_dir_path);
+    if (ensure_directory_exists(base_temp_dir_path) != 0) {
+        fprintf(stderr, "[FAIL] Could not create or access base temporary directory: %s.\n", base_temp_dir_path);
         return;
     }
 
     char original_cwd[1024];
     if (getcwd(original_cwd, sizeof(original_cwd)) == NULL) {
-        perror("run_put: Failed to get current working directory");
+        fprintf(stderr, "[ERROR] Failed to get current working directory: %s\n", strerror(errno));
         return;
     }
 
     for (int i = 1; i < arg_count; i++) {
         const char *pkgname = args[i];
-        printf("\n--- Operating '%s' on package '%s' via OmniPKG's repository ---\n", action, pkgname);
+        printf("\n>>> Processing package '%s' for action '%s' <<<\n", pkgname, action);
 
         char timestamp[20];
         time_t now = time(NULL);
         struct tm *t = localtime(&now);
         strftime(timestamp, sizeof(timestamp), "%Y%m%d%H%M%S", t);
 
-        // Create a unique temporary directory for this entire operation (clone + execution)
-        // e.g., /tmp/omnipkg_work/google-chrome_op_20250515201412
-        char operation_root_dir[512];
-        snprintf(operation_root_dir, sizeof(operation_root_dir), "%s/%s_op_%s", BASE_TEMP_DIR, pkgname, timestamp);
-
+        char operation_root_dir[1024];
+        snprintf(operation_root_dir, sizeof(operation_root_dir), "%s/%s_op_%s", base_temp_dir_path, pkgname, timestamp);
+        
+        printf("[INFO] Creating operation directory: %s\n", operation_root_dir);
         if (ensure_directory_exists(operation_root_dir) != 0) {
-            fprintf(stderr, "Failed to create operation root directory: %s\n", operation_root_dir);
-            continue; // Skip to the next package
+            fprintf(stderr, "[FAIL] Failed to create operation directory for '%s'. Skipping.\n", pkgname);
+            continue;
         }
 
-        // Define the path where the OmniPkg repository will be cloned
-        // e.g., /tmp/omnipkg_work/google-chrome_op_timestamp/OmniPkg_clone
-        char repo_clone_target_dir[600];
-        snprintf(repo_clone_target_dir, sizeof(repo_clone_target_dir), "%s/OmniPkg_clone", operation_root_dir);
+        char archive_filename_zip[1024];
+        snprintf(archive_filename_zip, sizeof(archive_filename_zip), "%s/repo_archive.zip", operation_root_dir);
 
-        // Construct and execute git clone command for the ENTIRE OmniPkg repository
-        // Using --depth 1 makes the clone faster by fetching only the latest commit.
-        char git_command[1024];
-        snprintf(git_command, sizeof(git_command), "git clone --depth 1 %s %s", OMNIPKG_REPO_URL, repo_clone_target_dir);
-        printf("Executing: %s\n", git_command);
+        char download_url[2048];
+        snprintf(download_url, sizeof(download_url), "https://github.com/%s/%s/archive/refs/heads/%s.zip",
+                 OMNIPKG_OWNER, OMNIPKG_REPO_NAME, OMNIPKG_DEFAULT_BRANCH);
 
-        int sys_status = system(git_command);
+        char download_command[3072];
+        snprintf(download_command, sizeof(download_command), "curl -s -L -o %s %s", archive_filename_zip, download_url); // Added -s for silent curl
+        printf("[INFO] Downloading repository archive from GitHub...\n");
+        // printf("DEBUG: %s\n", download_command); // Uncomment for debugging download command
+
+        int sys_status = system(download_command);
         if (sys_status != 0) {
-            fprintf(stderr, "Failed to clone OmniPkg repository for package '%s'. ", pkgname);
-            if (sys_status == -1) perror("System call to git clone failed");
-            else fprintf(stderr, "Git command exited with status %d.\n", WEXITSTATUS(sys_status));
-            remove_directory_recursive(operation_root_dir); // Clean up the operation root directory
-            continue; // Skip to the next package
+            fprintf(stderr, "[ERROR] Failed to download repository archive for '%s'. ", pkgname);
+            if (sys_status == -1) { fprintf(stderr, "System call error: %s\n", strerror(errno));}
+            else {
+                if (WIFEXITED(sys_status)) fprintf(stderr, "Curl command exited with status %d.\n", WEXITSTATUS(sys_status));
+                else if (WIFSIGNALED(sys_status)) fprintf(stderr, "Curl command was terminated by signal %d.\n", WTERMSIG(sys_status));
+                else fprintf(stderr, "Curl command returned unknown non-zero status %d.\n", sys_status);
+            }
+            remove_directory_recursive(operation_root_dir);
+            fprintf(stderr, "[FAIL] Failed processing package '%s'. Skipping.\n", pkgname);
+            continue;
         }
-        printf("OmniPkg repository cloned successfully into '%s'.\n", repo_clone_target_dir);
+        printf("[INFO] Repository archive downloaded: %s\n", archive_filename_zip);
 
-        // Path to the specific package's directory within the cloned repo
-        // e.g., /tmp/.../OmniPkg_clone/packages/google-chrome
-        char package_dir_in_clone[768];
-        snprintf(package_dir_in_clone, sizeof(package_dir_in_clone), "%s/packages/%s", repo_clone_target_dir, pkgname);
+        printf("[INFO] Changing working directory to: %s for extraction\n", operation_root_dir);
+        if (chdir(operation_root_dir) != 0) {
+            fprintf(stderr, "[ERROR] Failed to change to operation directory '%s' for extraction: %s\n", operation_root_dir, strerror(errno));
+            if (chdir(original_cwd) !=0) { fprintf(stderr, "[WARN] Failed to return to original CWD after chdir failure.\n"); }
+            remove_directory_recursive(operation_root_dir);
+            fprintf(stderr, "[FAIL] Failed processing package '%s'. Skipping.\n", pkgname);
+            continue;
+        }
 
-        // Path to the script to be executed
-        // e.g., /tmp/.../OmniPkg_clone/packages/google-chrome/install.sh
-        char script_full_path[1024];
-        snprintf(script_full_path, sizeof(script_full_path), "%s/%s.sh", package_dir_in_clone, action);
+        char extract_command[2048];
+        snprintf(extract_command, sizeof(extract_command), "unzip -q repo_archive.zip");
+        printf("[INFO] Extracting archive (unzip -q repo_archive.zip)...\n");
+        sys_status = system(extract_command);
+        // After extraction, delete the zip file
+        if (remove("repo_archive.zip") != 0) {
+             fprintf(stderr, "[WARN] Could not delete downloaded zip file 'repo_archive.zip': %s\n", strerror(errno));
+        }
 
-        // Check if the script file exists
+        if (sys_status != 0) {
+            fprintf(stderr, "[ERROR] Failed to extract repository archive for '%s'.\n", pkgname);
+             // Full system status error reporting here
+            if (chdir(original_cwd) !=0) { fprintf(stderr, "[WARN] Failed to return to original CWD after unzip failure.\n"); }
+            remove_directory_recursive(operation_root_dir);
+            fprintf(stderr, "[FAIL] Failed processing package '%s'. Skipping.\n", pkgname);
+            continue;
+        }
+        printf("[INFO] Archive extracted.\n");
+        
+        char extracted_repo_package_path[2048];
+        snprintf(extracted_repo_package_path, sizeof(extracted_repo_package_path), "%s-%s/packages/%s", 
+                 OMNIPKG_REPO_NAME, OMNIPKG_DEFAULT_BRANCH, pkgname);
+        
+        printf("[INFO] Changing working directory to package folder: %s\n", extracted_repo_package_path);
+        if (chdir(extracted_repo_package_path) != 0) { // This path is relative to current dir (operation_root_dir)
+            fprintf(stderr, "[ERROR] Failed to change to extracted package directory '%s': %s\n", extracted_repo_package_path, strerror(errno));
+            if (chdir(original_cwd) !=0) { fprintf(stderr, "[WARN] Failed to return to original CWD after chdir to package failure.\n"); }
+            remove_directory_recursive(operation_root_dir); // operation_root_dir is absolute
+            fprintf(stderr, "[FAIL] Failed processing package '%s'. Skipping.\n", pkgname);
+            continue;
+        }
+        // CWD is now .../operation_root_dir/OmniPkg-main/packages/google-chrome/
+
+        char script_to_execute[512];
+        snprintf(script_to_execute, sizeof(script_to_execute), "./%s.sh", action);
         struct stat script_stat;
-        if (stat(script_full_path, &script_stat) != 0) {
-            fprintf(stderr, "Error: Script '%s.sh' not found for package '%s' at expected path: %s\n", action, pkgname, script_full_path);
+        if (stat(script_to_execute, &script_stat) != 0) {
+            fprintf(stderr, "[ERROR] Script '%s' not found for package '%s'. Expected in current directory.\n", script_to_execute, pkgname);
         } else {
-            // Change current working directory to the package's directory within the clone
-            // Scripts often expect to be run from their own directory to use relative paths.
-            if (chdir(package_dir_in_clone) != 0) {
-                perror("run_put: Failed to change to package directory within clone");
-                fprintf(stderr, "Target directory: %s\n", package_dir_in_clone);
-            } else {
-                printf("Changed working directory to: %s\n", package_dir_in_clone);
-
-                // Construct and execute the package script command.
-                // The script is now referenced by its name (e.g., "./install.sh") as we are in its directory.
-                char exec_script_command[512]; // Path is shorter now
-                snprintf(exec_script_command, sizeof(exec_script_command), "sudo bash ./%s.sh", action);
-                printf("Executing: %s\n", exec_script_command);
-
-                sys_status = system(exec_script_command);
-                if (sys_status == 0) {
-                    printf("Operation '%s' for package '%s' was successful!\n", action, pkgname);
-                } else {
-                    fprintf(stderr, "Operation '%s' for package '%s' failed. ", action, pkgname);
-                    if (sys_status == -1) perror("System call to execute script failed");
-                    else fprintf(stderr, "Script exited with status %d.\n", WEXITSTATUS(sys_status));
-                }
-
-                // IMPORTANT: Change back to the original CWD *before* cleanup of operation_root_dir
-                if (chdir(original_cwd) != 0) {
-                    perror("run_put: CRITICAL error: Failed to change back to original directory from package dir. Cleanup might be unsafe.");
-                    // For safety, one might choose to not proceed with recursive deletion if CWD is uncertain.
-                } else {
-                    printf("Changed working directory back to: %s (from package dir)\n", original_cwd);
+            char exec_script_command[512 + 6]; // "bash " + "./action.sh"
+            snprintf(exec_script_command, sizeof(exec_script_command), "bash %s", script_to_execute);
+            printf("[INFO] Executing package script: %s (as current user)\n", exec_script_command);
+            sys_status = system(exec_script_command);
+            
+            if (sys_status == 0) { 
+                printf("[SUCCESS] Action '%s' for package '%s' completed successfully.\n", action, pkgname);
+            } else { 
+                fprintf(stderr, "[ERROR] Action '%s' for package '%s' failed. ", action, pkgname);
+                if (sys_status == -1) { fprintf(stderr, "System call error: %s\n", strerror(errno));}
+                else {
+                    if (WIFEXITED(sys_status)) fprintf(stderr, "Script exited with status %d.\n", WEXITSTATUS(sys_status));
+                    else if (WIFSIGNALED(sys_status)) fprintf(stderr, "Script was terminated by signal %d.\n", WTERMSIG(sys_status));
+                    else fprintf(stderr, "Script returned unknown non-zero status %d.\n", sys_status);
                 }
             }
         }
-
-        // Always attempt to change back to original_cwd if not already there, before removing operation_root_dir
-        // This is a safeguard in case the chdir inside the 'else' block above was skipped due to script not found
-        char current_dir_check[1024];
-        if (getcwd(current_dir_check, sizeof(current_dir_check)) != NULL && strcmp(current_dir_check, original_cwd) != 0) {
-            if (chdir(original_cwd) != 0) {
-                 perror("run_put: Warning: Failed to ensure CWD is original_cwd before cleanup.");
-            }
+        
+        printf("[INFO] Returning to original working directory: %s\n", original_cwd);
+        if (chdir(original_cwd) != 0) {
+            fprintf(stderr, "[CRITICAL] Failed to change back to original directory '%s': %s.\n", original_cwd, strerror(errno));
+            // Not attempting to remove operation_root_dir if we can't get back, to avoid deleting from wrong CWD
+        } else {
+            // Only remove if we successfully returned to original_cwd
+            remove_directory_recursive(operation_root_dir); // operation_root_dir is an absolute path
         }
-
-        // Clean up the entire temporary directory created for this operation
-        remove_directory_recursive(operation_root_dir);
-        printf("--- Finished operation for package '%s' ---\n", pkgname);
+        printf("<<< Finished processing package '%s' >>>\n", pkgname);
     }
+    printf("\nAll package operations complete.\n");
 }
 
