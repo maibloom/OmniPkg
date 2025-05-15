@@ -1,0 +1,1 @@
+echo "google-chrome remove"
