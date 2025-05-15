@@ -1,0 +1,122 @@
+#!/bin/bash
+
+backup_packages() {
+    read -p "Enter the directory where you want to save the backup: " DIRECTORY
+
+    # Use the current directory as the default if no input is given
+    DIRECTORY=${DIRECTORY:-$(pwd)}
+
+    if [ ! -d "$DIRECTORY" ]; then
+        echo "Error: The specified directory does not exist. Please create it first."
+        exit 1
+    fi
+
+    OUTPUT_FILE="$DIRECTORY/backup.txt"
+
+    # Backup installed packages from both pacman and yay
+    if pacman -Q > "$OUTPUT_FILE" && yay -Q >> "$OUTPUT_FILE"; then
+        echo "Installed packages have been saved to $OUTPUT_FILE"
+    else
+        echo "Error: The backup process has failed. Please check errors for more details."
+        exit 1
+    fi
+}
+
+batch_packages() {
+    file="$1"
+
+    if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+        echo "Error: File '$file' does not exist or is not readable."
+        exit 1
+    fi
+
+    while IFS= read -r line; do
+        if [[ -n "$line" ]]; then # Skip empty lines
+            install_package "$line"
+        fi
+    done < "$file"
+}
+
+update_packages() {
+    echo "Updating packages installed with pacman..."
+    if sudo pacman -Syu; then
+        echo "All pacman packages have been updated."
+    else
+        echo "Error: There has been an issue updating pacman packages. Please check errors for more details."
+        return 1
+    fi
+
+    echo "Updating packages installed with yay..."
+    if yay -u; then
+        echo "All yay packages have been updated."
+    else
+        echo "Error: There has been an issue updating yay packages. Please check errors for more details."
+        return 1
+    fi
+}
+
+install_package() {
+    package="$1"
+
+    echo "Attempting to install '$package' using pacman..."
+    if sudo pacman -Sy "$package"; then
+        echo "Installation of '$package' with pacman was successful."
+        return 0
+    else
+        echo "Installation with pacman failed. Attempting with yay..."
+    fi
+
+    if yay -S "$package"; then
+        echo "Installation of '$package' with yay was successful."
+        return 0
+    else
+        echo "Error: Installation of '$package' failed with both pacman and yay."
+        return 1
+    fi
+}
+
+show_help() {
+    cat <<EOF
+Usage: $0 <command> [args]
+
+Commands:
+  install <packages>       Install specified packages using pacman or yay.
+  update                   Update all installed packages using pacman and yay.
+  backup                   Save a backup of installed packages to a specified directory.
+  batch <file>             Install packages listed in a file using pacman or yay.
+  help                     Show this help message.
+
+For more information, visit: https://github.com/devtracer/OmniPkg
+EOF
+}
+
+# Main logic to handle user commands
+case "$1" in
+    install)
+        shift
+        if [ "$#" -eq 0 ]; then
+            echo "Error: No packages specified for installation."
+            exit 1
+        fi
+        for package in "$@"; do
+            install_package "$package"
+        done
+        ;;
+    update)
+        update_packages
+        ;;
+    backup)
+        backup_packages
+        ;;
+    batch)
+        shift
+        if [ "$#" -ne 1 ]; then
+            echo "Error: Batch installation requires exactly one file argument."
+            exit 1
+        fi
+        batch_packages "$1"
+        ;;
+    help|*)
+        show_help
+        ;;
+esac
