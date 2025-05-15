@@ -1,1 +1,5 @@
-svn checkout https://github.com/BioArchLinux/Packages/tree/master/BioArchLinux/calamares
+git clone https://github.com/Cleanjaro/calamares.git
+
+cd calamares
+
+makepkg -si

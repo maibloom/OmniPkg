@@ -6,4 +6,4 @@ makepkg -s
 
 ls
 
-sudo pacman -U --noconfirm google*
+sudo pacman -U --noconfirm *.pkg.tar.zst
