@@ -1,0 +1,5 @@
+curl -LO archfi.sf.net/archfi
+
+sudo mv archfi /usr/bin
+
+sudo chmod +x /usr/bin/archfi
