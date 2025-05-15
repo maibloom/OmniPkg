@@ -1,1 +1,1 @@
-echo "google-chrome remove"
+sudo pacman -R google-chrome
