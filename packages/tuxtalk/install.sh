@@ -4,7 +4,7 @@ fi
 
 sudo pacman -S python-pipx python-pyqt5
 
-pipx install transformers torch
+# pipx install transformers torch
 
 git clone https://github.com/maibloom/TuxTalk.git
 
