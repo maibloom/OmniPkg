@@ -6,7 +6,7 @@ echo "success"
 
 omnipkg put install google-bro-office tuxtalk
 
-sudo pacman -S dialog
+sudo pacman -S dialog --noconfirm
 
 # Function to display the dialog menu
 function show_menu {
