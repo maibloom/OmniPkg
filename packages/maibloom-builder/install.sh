@@ -40,7 +40,38 @@ else
     done
 fi
 
+cat << 'NEOFETCH_CONF' > /etc/neofetch/config.conf
+# Mai Bloom Custom Neofetch Configuration
+#
+# This function customizes the default system information output.
+print_info() {
+    info "OS" "mai bloom"
+    info "Kernel" kernel
+    info "Uptime" uptime
+    info "Packages" packages
+    info "Shell" shell
+    info "Resolution" resolution
+}
 
+# Define the ASCII logo text for Mai Bloom.
+ascii_distro="mai bloom"
+NEOFETCH_CONF
+
+echo "=> Neofetch configuration complete."
+
+echo "=> Renaming OS to 'mai bloom'..."
+cat << 'OS_INFO' > /etc/os-release
+NAME="mai bloom"
+VERSION="1.0"
+ID=mai_bloom
+ID_LIKE=arch
+PRETTY_NAME="mai bloom"
+ANSI_COLOR="0;36"
+HOME_URL="https://maibloom.github.io"
+DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"
+SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"
+BUG_REPORT_URL="https://github.com/maibloom/iso/issues"
+OS_INFO
 
 
 dialog --title "Installation Successful" --msgbox "You have successfully installed the OS.\n\nPlease unplug the USB drive and reboot your system." 10 50
