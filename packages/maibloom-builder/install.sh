@@ -30,11 +30,11 @@ if [[ -z "$CHOICES" ]]; then
 else
     for CHOICE in $CHOICES; do
         case $CHOICE in
-            1) sudo pacman -Syu gcompris-qt kbruch kgeography kalzium stellarium geogebra tuxmath wxmaxima libreoffice-fresh firefox chromium okular evince --noconfirm ;;
+            1) sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm ;;
             2) sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm ;;
-            3) sudo pacman -Syu libreoffice-fresh onlyoffice-desktopeditors okular evince zim --noconfirm ;;
-            4) sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv cantata elisa clementine gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm ;;
-            5) sudo pacman -Syu steam lutris heroic-games-launcher wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm ;;
+            3) sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm ;;
+            4) sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm ;;
+            5) sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm ;;
 	    *) echo "Invalid option" ;;
         esac
     done
