@@ -4,6 +4,9 @@ fi
 
 # cayn@cayn:~$ omnipkg defdis
 # "debian" 
+
+echo "$(omnipkg defdis | sed 's/^"//; s/"$//')"
+
 if [ "$(omnipkg defdis | sed 's/^"//; s/"$//')" = "debian" ]; then
     sudo apt install python-pipx python-pyqt5 -y
 elif [ "$(omnipkg defdis | sed 's/^"//; s/"$//')" = "arch" ]; then
