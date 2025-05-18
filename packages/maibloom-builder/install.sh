@@ -45,7 +45,7 @@ cat << 'NEOFETCH_CONF' > /etc/neofetch/config.conf
 #
 # This function customizes the default system information output.
 print_info() {
-    info "OS" "mai bloom"
+    info "OS" "Mai Bloom"
     info "Kernel" kernel
     info "Uptime" uptime
     info "Packages" packages
@@ -61,7 +61,7 @@ echo "=> Neofetch configuration complete."
 
 echo "=> Renaming OS to 'mai bloom'..."
 cat << 'OS_INFO' > /etc/os-release
-NAME="mai bloom"
+NAME="Mai Bloom"
 VERSION="1.0"
 ID=mai_bloom
 ID_LIKE=arch
