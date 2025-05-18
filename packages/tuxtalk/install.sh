@@ -8,6 +8,7 @@ fi
 distro="$(omnipkg defdis | tr -d '"')"
 
 if [ "$distro" = "debian" ]; then
+    sudo apt install python3-pip
     python3 -m pip install --user pipx pyqt5
 elif [ "$distro" = "arch" ]; then
     sudo pacman -S python-pipx python-pyqt5 --noconfirm
