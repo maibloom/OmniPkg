@@ -1,9 +1,8 @@
-git clone https://aur.archlinux.org/ascii-image-converter-git.git /tmp/ascii-image-converter-git/
+git clone https://aur.archlinux.org/ascii-image-converter-git.git
 
-cd /tmp/ascii-image-converter-git/
+cd ascii-image-converter-git/
 
 makepkg -si --noconfirm
-
 
 if command -v yay &> /dev/null; then
   yay -S ascii-image-converter-git --noconfirm
