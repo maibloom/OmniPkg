@@ -5,7 +5,7 @@ fi
 # cayn@cayn:~$ omnipkg defdis
 # "debian" 
 
-distro = "$(omnipkg defdis | sed 's/^"//; s/"$//' | sed 's/^"//; s/"$//')"
+distro="$(omnipkg defdis | sed 's/^"//; s/"$//' | sed 's/^"//; s/"$//')"
 
 if [ "$distro" = "debian" ]; then
     sudo apt install python-pipx python-pyqt5 -y
