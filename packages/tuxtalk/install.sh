@@ -2,6 +2,8 @@ if [ -f /usr/bin/TuxTalk ]; then
     sudo rm -rf /usr/bin/TuxTalk
 fi
 
+omnipkg defdis
+
 distro=$(omnipkg defdis | sed 's/^"//; s/"$//')
 
 if [ "$distro" = "debian" ]; then
