@@ -2,11 +2,14 @@ if [ -f /usr/bin/TuxTalk ]; then
     sudo rm -rf /usr/bin/TuxTalk
 fi
 
+distro=$(omnipkg defdis | sed 's/^"//; s/"$//')
+
 if [ "$distro" = "debian" ]; then
     sudo apt install python-pipx python-pyqt5 -y
 elif [ "$distro" = "arch" ]; then
     sudo pacman -S python-pipx python-pyqt5 --noconfirm
 fi
+
 
 git clone https://github.com/maibloom/TuxTalk.git
 
