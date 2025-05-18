@@ -2,7 +2,10 @@ if [ -f /usr/bin/TuxTalk ]; then
     sudo rm -rf /usr/bin/TuxTalk
 fi
 
-distro=$(omnipkg defdis | sed 's/^"//; s/"$//')
+# cayn@cayn:~$ omnipkg defdis
+# "debian" 
+
+distro=$(omnipkg defdis)
 
 echo distro
 
