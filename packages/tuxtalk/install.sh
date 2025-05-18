@@ -2,13 +2,9 @@ if [ -f /usr/bin/TuxTalk ]; then
     sudo rm -rf /usr/bin/TuxTalk
 fi
 
-omnipkg defdis
-
-distro=$(omnipkg defdis | sed 's/^"//; s/"$//')
-
-if [ "$distro" = "debian" ]; then
+if [ "$(omnipkg defdis)" = "debian" ]; then
     sudo apt install python-pipx python-pyqt5 -y
-elif [ "$distro" = "arch" ]; then
+elif [ "$(omnipkg defdis)" = "arch" ]; then
     sudo pacman -S python-pipx python-pyqt5 --noconfirm
 fi
 
