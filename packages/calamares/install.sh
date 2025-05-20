@@ -1,7 +1,7 @@
 wget https://github.com/calamares/calamares/releases/download/v3.3.14/calamares-3.3.14.tar.gz
 
-tar -xzf calamares-3.3.14.tar.gz
-cd calamares-3.3.14.tar.gz
+tar -xzf calamares*
+cd calamares*
 
 mkdir build && cd build
 cmake ..
