@@ -1,4 +1,4 @@
-sudo pacman -Syu jdk-openjdk maven gradle
+sudo pacman -Syu jdk21-openjdk maven gradle
 
 java -version
 javac -version
