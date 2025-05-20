@@ -1,24 +1,18 @@
 #!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status.
+set -e
 
 # --- Configuration ---
-CALAMARES_VERSION="3.3.14" # Specify the Calamares version you want to build
-# You can find the latest releases at: https://github.com/calamares/calamares/releases
+CALAMARES_VERSION="3.3.14" # Target Calamares version
+# Latest releases: https://github.com/calamares/calamares/releases
 # --- End Configuration ---
 
 CALAMARES_TARBALL="calamares-${CALAMARES_VERSION}.tar.gz"
 CALAMARES_SOURCE_DIR="calamares-${CALAMARES_VERSION}"
 DOWNLOAD_URL="https://github.com/calamares/calamares/releases/download/v${CALAMARES_VERSION}/${CALAMARES_TARBALL}"
 
-echo "INFO: This script will download, build, and install Calamares ${CALAMARES_VERSION} globally."
-echo "INFO: It assumes you are running on Arch Linux in a live GUI environment"
-echo "INFO: as a user with root privileges (either root directly or with sudo access)."
-echo "INFO: An internet connection is required."
-echo ""
-read -p "Press Enter to continue or Ctrl+C to abort..."
+echo "INFO: Building Calamares ${CALAMARES_VERSION} on Arch Linux (requires root/sudo and internet)."
 echo ""
 
-# Determine if sudo is needed
 if [[ $EUID -ne 0 ]]; then
     SUDO_CMD="sudo"
 else
@@ -29,14 +23,13 @@ echo ">>> Step 1: Updating package database and installing dependencies..."
 ${SUDO_CMD} pacman -Syu --needed --noconfirm \
     base-devel cmake extra-cmake-modules \
     qt5-base qt5-svg qt5-tools \
-    kcoreaddons ki18n kparts ksolid kwidgetsaddons kcrash \
+    kcoreaddons ki18n kparts solid kwidgetsaddons kcrash \
     yaml-cpp polkit-qt5 kpmcore icu boost-libs \
     python python-yaml python-polib \
     hwinfo squashfs-tools gettext dosfstools efibootmgr parted wget \
-    kiconthemes # Often good for a better UI experience
+    kiconthemes # For a better UI experience
 
-# Create a temporary build directory
-# Uses XDG_RUNTIME_DIR if available (like /run/user/1000), otherwise /tmp
+# Uses XDG_RUNTIME_DIR if available (e.g., /run/user/UID), otherwise /tmp
 BUILD_PARENT_DIR=$(mktemp -d -p "${XDG_RUNTIME_DIR:-/tmp}" calamares_build_XXXXXX)
 echo "INFO: Using temporary build directory: ${BUILD_PARENT_DIR}"
 cd "${BUILD_PARENT_DIR}"
@@ -45,9 +38,7 @@ echo ""
 echo ">>> Step 2: Downloading Calamares ${CALAMARES_VERSION} source..."
 wget --progress=bar:force -O "${CALAMARES_TARBALL}" "${DOWNLOAD_URL}"
 if [[ $? -ne 0 ]]; then
-    echo "ERROR: Failed to download Calamares tarball."
-    echo "Please check the URL, version (${CALAMARES_VERSION}), and your internet connection."
-    rm -rf "${BUILD_PARENT_DIR}" # Clean up
+    echo "ERROR: Failed to download Calamares tarball. Check version and internet."
     exit 1
 fi
 
@@ -62,44 +53,46 @@ mkdir -p build
 cd build
 
 # CMAKE_INSTALL_PREFIX:
-#   /usr/local: Standard for manually compiled software, keeps it separate from pacman.
-#               Usually in PATH. This is the recommended default.
-#   /usr:       Installs into the system's main directories (like pacman packages).
-#               Use if you specifically need Calamares in /usr/bin, but be aware
-#               pacman won't manage these files.
+#   /usr/local: Standard for manually compiled software (recommended default).
+#   /usr:       To install into system's main directories (like pacman packages).
 CMAKE_INSTALL_PREFIX="/usr/local"
 
 cmake .. -DCMAKE_BUILD_TYPE=Release \
          -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
-         -DENABLE_TESTS=OFF # Disable tests to speed up build; not needed for just running
+         -DENABLE_TESTS=OFF # Disable tests to speed up build
 
 echo ""
 echo ">>> Step 5: Compiling Calamares (make)..."
-# Use $(nproc) to get the number of processing units available to speed up compilation
 make -j$(nproc)
 
 echo ""
 echo ">>> Step 6: Installing Calamares globally (${SUDO_CMD} make install)..."
-# This step MUST be run with root privileges for global installation
 ${SUDO_CMD} make install
 
 echo ""
 echo ">>> Step 7: Verifying installation..."
-INSTALLED_PATH=$(${SUDO_CMD} which calamares) # Use sudo if needed for which in case of restricted PATH for normal user
+INSTALLED_PATH=""
+if [[ -x "${CMAKE_INSTALL_PREFIX}/bin/calamares" ]]; then
+    INSTALLED_PATH="${CMAKE_INSTALL_PREFIX}/bin/calamares"
+else # Fallback to 'which' if CMAKE_INSTALL_PREFIX was changed or for some other reason
+    if [[ $EUID -ne 0 ]]; then
+        INSTALLED_PATH=$(${SUDO_CMD} which calamares 2>/dev/null)
+    else
+        INSTALLED_PATH=$(which calamares 2>/dev/null)
+    fi
+fi
 
 if [[ -n "${INSTALLED_PATH}" && -x "${INSTALLED_PATH}" ]]; then
     echo "SUCCESS: Calamares installed!"
     echo "Executable found at: ${INSTALLED_PATH}"
-    echo "You can now try running: ${SUDO_CMD} calamares"
+    echo "You can now try running: ${SUDO_CMD} $(basename ${INSTALLED_PATH})"
 else
-    echo "WARNING: Calamares executable not found in the default PATH immediately after installation."
-    echo "It was likely installed to '${CMAKE_INSTALL_PREFIX}/bin/calamares'."
-    if [[ ":$PATH:" != *":${CMAKE_INSTALL_PREFIX}/bin:"* ]]; then
+    echo "WARNING: Calamares executable not found in PATH or expected location (${CMAKE_INSTALL_PREFIX}/bin/calamares)."
+    if [[ ":$PATH:" != *":${CMAKE_INSTALL_PREFIX}/bin:"* && $EUID -ne 0 ]]; then
         echo "Your current PATH might not include '${CMAKE_INSTALL_PREFIX}/bin'."
-        echo "You can try running it directly: ${SUDO_CMD} ${CMAKE_INSTALL_PREFIX}/bin/calamares"
-        echo "To add it to your PATH for this session: export PATH=\$PATH:${CMAKE_INSTALL_PREFIX}/bin"
+        echo "Try: ${SUDO_CMD} ${CMAKE_INSTALL_PREFIX}/bin/calamares or add to PATH: export PATH=\$PATH:${CMAKE_INSTALL_PREFIX}/bin"
     else
-         echo "Try running: ${SUDO_CMD} $(basename ${INSTALLED_PATH:-${CMAKE_INSTALL_PREFIX}/bin/calamares})"
+         echo "Try running: ${SUDO_CMD} ${CMAKE_INSTALL_PREFIX}/bin/calamares"
     fi
 fi
 
@@ -111,6 +104,11 @@ rm -rf "${BUILD_PARENT_DIR}"
 
 echo ""
 echo "Installation process finished."
-echo "Remember that Calamares performs system-level operations and usually requires root privileges to run."
-echo "Try: ${SUDO_CMD} $(which calamares || echo ${CMAKE_INSTALL_PREFIX}/bin/calamares)"
+echo "Calamares usually requires root privileges to run (e.g., for disk partitioning)."
+
+FINAL_RUN_CMD="${CMAKE_INSTALL_PREFIX}/bin/calamares"
+if [[ -n "${INSTALLED_PATH}" && -x "${INSTALLED_PATH}" ]]; then
+    FINAL_RUN_CMD="${INSTALLED_PATH}"
+fi
+echo "Try: ${SUDO_CMD} ${FINAL_RUN_CMD}"
 
