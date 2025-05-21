@@ -1,3 +1,5 @@
+sudo pacman -S dialog --noconfirm
+
 curl -LO archfi.sf.net/archfi
 
 sudo mv archfi /usr/bin
