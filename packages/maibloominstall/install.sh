@@ -1,4 +1,3 @@
-sudo omnipkg put install archfi
+omnipkg put install archfi
 
 sudo archfi
-
