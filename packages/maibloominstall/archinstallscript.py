@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 from archinstall import SysInfo
 from archinstall.lib.args import arch_config_handler
@@ -152,12 +153,11 @@ def perform_installation(mountpoint: Path) -> None:
 
 		if not arch_config_handler.args.silent:
 			with Tui():
-					try:
-						installation.drop_to_shell()
-            subprocess.run(["sudo", "bash", "post-build.sh"], 
-                     capture_output=True)
-					except Exception:
-						pass
+				try:
+					installation.drop_to_shell()
+					sys.exit()
+				except Exception:
+					pass
 
 
 def guided() -> None:
