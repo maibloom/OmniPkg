@@ -1,3 +1,3 @@
-chmod +x maibloominstall.sh
+chmod +x installmaibloom.sh
 
-sudo mv maibloominstall.sh /usr/local/bin/maibloominstall
+sudo mv installmaibloom.sh /usr/local/bin/installmaibloom
