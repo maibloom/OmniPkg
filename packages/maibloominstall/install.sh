@@ -6,4 +6,12 @@ sudo pacman -Syy
 
 python archinstallscript.py
 
+sudo chmod +x post-build.sh
+
+sudo cp post-build.sh /mnt/post-build.sh
+
+arch-chroot /mnt
+
+sudo pacman -Syyu git unzip curl --noconfirm
+
 sudo bash post-build.sh
