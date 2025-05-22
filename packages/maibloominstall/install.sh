@@ -4,7 +4,7 @@ sudo chmod +x *
 
 sudo pacman -Syy
 
-touch post-build.sh
+ls
 
 if [ archinstall ]; then
   sudo chmod +x post-build.sh
