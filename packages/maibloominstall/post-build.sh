@@ -103,6 +103,9 @@ handle_selections() {
     return
   fi
 
+  # Remove double quotes from choices
+  choices=$(echo "$choices" | tr -d '"')
+
   for choice in $choices; do
     case "$choice" in
       1)
@@ -126,6 +129,7 @@ handle_selections() {
     esac
   done
 }
+
 
 # Configure Neofetch with custom settings.
 configure_neofetch() {
