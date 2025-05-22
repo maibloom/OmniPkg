@@ -4,7 +4,7 @@ sudo chmod +x *
 
 sudo pacman -Syy
 
-python archinstallscript.py
+archinstall
 
 sudo chmod +x post-build.sh
 
