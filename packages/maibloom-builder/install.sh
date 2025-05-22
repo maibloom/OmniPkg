@@ -33,6 +33,13 @@ remove_existing_directory() {
   fi
 }
 
+# Prompt for sudo password upfront and keep the session alive.
+initialize_sudo() {
+  sudo -v
+  # Keep-alive: update existing sudo time stamp until script finishes
+  while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+}
+
 #######################
 # Process Functions
 #######################
@@ -40,17 +47,13 @@ remove_existing_directory() {
 # Clone the repository from the provided URL.
 clone_repository() {
   local repo_url="$1"
-  if ! git clone "$repo_url"; then
-    error_exit "Failed to clone repository: $repo_url"
-  fi
+  git clone "$repo_url" || error_exit "Failed to clone repository: $repo_url"
 }
 
 # Run the build script with elevated privileges.
 run_build_script() {
   local script="$1"
-  if ! sudo bash "$script"; then
-    error_exit "Build script '$script' failed."
-  fi
+  sudo bash "$script" || error_exit "Build script '$script' failed."
 }
 
 # Update system packages.
@@ -77,21 +80,23 @@ display_checklist() {
   local prompt="Which of the following are you going to use your device for?"
   local height=15 width=50 list_height=5
   local options=(
-    1 "Education" OFF
-    2 "Programming" OFF
-    3 "Office" OFF
-    4 "Daily Use" OFF
-    5 "Gaming" OFF
+    1 "Education" off
+    2 "Programming" off
+    3 "Office" off
+    4 "Daily Use" off
+    5 "Gaming" off
   )
 
   # Capture the user's choices.
-  CHOICES=$(dialog --clear --title "$title" \
+  local choices
+  choices=$(dialog --clear --title "$title" \
+    --separate-output \
     --checklist "$prompt" "$height" "$width" "$list_height" \
     "${options[@]}" \
-    3>&1 1>&2 2>&3)
+    3>&1 1>&2 2>&3) || true
   clear
 
-  echo "$CHOICES"
+  echo "$choices"
 }
 
 # Handle the selected options with specific package installations.
@@ -103,7 +108,7 @@ handle_selections() {
     return
   fi
 
-  for choice in $choices; do
+  while IFS= read -r choice; do
     case "$choice" in
       1)
         sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
@@ -124,30 +129,24 @@ handle_selections() {
         echo "Invalid option: $choice"
         ;;
     esac
-  done
+  done <<< "$choices"
 }
 
-# Configure Neofetch with custom settings.
-configure_neofetch() {
-  local config_dir="/etc/neofetch"
+# Configure fastfetch with custom settings.
+configure_fastfetch() {
+  local config_dir="/etc/fastfetch"
   local config_file="${config_dir}/config.conf"
 
   echo "Installing fastfetch..."
-  if ! sudo pacman -S --noconfirm fastfetch; then
-    echo "Error: fastfetch installation failed."
-    return 1
-  fi
+  sudo pacman -S --noconfirm fastfetch || { echo "Error: fastfetch installation failed."; return 1; }
 
   if [ ! -d "$config_dir" ]; then
     echo "Creating configuration directory: $config_dir"
-    if ! sudo mkdir -p "$config_dir"; then
-      echo "Error: Could not create configuration directory."
-      return 1
-    fi
+    sudo mkdir -p "$config_dir" || { echo "Error: Could not create configuration directory."; return 1; }
   fi
 
   echo "Writing configuration to ${config_file}..."
-  if sudo tee "$config_file" > /dev/null << 'EOF'
+  sudo tee "$config_file" > /dev/null << 'EOF'
 print_info() {
     info "OS" "Mai Bloom"
     info "Kernel" kernel
@@ -158,40 +157,34 @@ print_info() {
 }
 ascii_distro="mai bloom"
 EOF
-  then
-    echo "=> Neofetch configuration complete."
-    return 0
-  else
-    echo "Error: Failed to write configuration file."
-    return 1
-  fi
+
+  echo "=> fastfetch configuration complete."
 }
 
 # Rename the operating system by modifying /etc/os-release.
 rename_os() {
   local os_release_file="/etc/os-release"
-  echo "=> Renaming OS to 'Mai Bloom'..."
-  if sudo tee "$os_release_file" > /dev/null << 'EOF'
-NAME="Mai Bloom"
-VERSION="1.0"
-ID=mai_bloom
-ID_LIKE=arch
-PRETTY_NAME="Mai Bloom"
-ANSI_COLOR="0;36"
-HOME_URL="https://maibloom.github.io"
-DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"
-SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"
-BUG_REPORT_URL="https://github.com/maibloom/iso/issues"
-EOF
-  then
-    echo "=> OS renamed successfully."
-    return 0
-  else
-    echo "Error: Failed to rename OS."
-    return 1
-  fi
-}
+  local backup_file="/etc/os-release.bak"
 
+  echo "=> Renaming OS to 'Mai Bloom'..."
+
+  # Backup the original file
+  sudo cp "$os_release_file" "$backup_file" || { echo "Error: Failed to backup os-release."; return 1; }
+
+  # Use sed to modify specific fields
+  sudo sed -i 's/^NAME=.*/NAME="Mai Bloom"/' "$os_release_file"
+  sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Mai Bloom"/' "$os_release_file"
+  sudo sed -i 's/^ID=.*/ID=mai_bloom/' "$os_release_file"
+  sudo sed -i 's/^ID_LIKE=.*/ID_LIKE=arch/' "$os_release_file"
+  sudo sed -i 's/^VERSION=.*/VERSION="1.0"/' "$os_release_file"
+  sudo sed -i 's|^HOME_URL=.*|HOME_URL="https://maibloom.github.io"|' "$os_release_file"
+  sudo sed -i 's|^DOCUMENTATION_URL=.*|DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
+  sudo sed -i 's|^SUPPORT_URL=.*|SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
+  sudo sed -i 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/maibloom/iso/issues"|' "$os_release_file"
+  sudo sed -i 's/^ANSI_COLOR=.*/ANSI_COLOR="0;36"/' "$os_release_file"
+
+  echo "=> OS renamed successfully."
+}
 
 # Show a success message using dialog and reboot the system.
 show_success_message_and_reboot() {
@@ -203,41 +196,44 @@ show_success_message_and_reboot() {
 #######################
 
 main() {
+  # Initialize sudo session
+  initialize_sudo
+
   # Navigate to the temporary directory.
   change_directory "/tmp"
-  
+
   # Remove any leftover repository directory.
   remove_existing_directory "omnipkg-app"
-  
+
   # Clone the repository.
   clone_repository "https://www.github.com/maibloom/omnipkg-app"
-  
+
   # Change into the newly cloned repository.
   change_directory "omnipkg-app"
-  
+
   # Run the build script.
   run_build_script "build.sh"
-  
+
   # Update system packages.
   update_system_packages
-  
+
   echo "Build succeeded."
-  
+
   # Install omnipkg packages.
   install_omnipkg_packages
-  
+
   # Ensure 'dialog' is installed.
   install_dialog_if_needed
-  
+
   # Display checklist dialog and handle selections.
   local selections
   selections=$(display_checklist)
   handle_selections "$selections"
-  
+
   # Configure additional software.
-  configure_neofetch
+  configure_fastfetch
   rename_os
-  
+
   # Final message and reboot.
   show_success_message_and_reboot
 }
