@@ -1,5 +1,6 @@
-chmod +x *.sh
+chmod +x *
 
-sudo mkdir /usr/local/bin/installmaibloom/
+sudo mkdir /usr/bin/installmaibloom/
 
-sudo mv *.sh /usr/local/bin/installmaibloom/
+sudo cp installmaibloom.sh /usr/bin/installmaibloom/
+sudo cp post_build.sh /usr/bin/installmaibloom/
