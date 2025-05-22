@@ -129,12 +129,25 @@ handle_selections() {
 
 # Configure Neofetch with custom settings.
 configure_neofetch() {
-  local config_file="/etc/neofetch/config.conf"
-  echo "Configuring Neofetch..."
-  sudo tee "$config_file" > /dev/null << 'EOF'
-# Mai Bloom Custom Neofetch Configuration
-#
-# This function customizes the default system information output.
+  local config_dir="/etc/neofetch"
+  local config_file="${config_dir}/config.conf"
+
+  echo "Installing fastfetch..."
+  if ! sudo pacman -S --noconfirm fastfetch; then
+    echo "Error: fastfetch installation failed."
+    return 1
+  fi
+
+  if [ ! -d "$config_dir" ]; then
+    echo "Creating configuration directory: $config_dir"
+    if ! sudo mkdir -p "$config_dir"; then
+      echo "Error: Could not create configuration directory."
+      return 1
+    fi
+  fi
+
+  echo "Writing configuration to ${config_file}..."
+  if sudo tee "$config_file" > /dev/null << 'EOF'
 print_info() {
     info "OS" "Mai Bloom"
     info "Kernel" kernel
@@ -143,18 +156,22 @@ print_info() {
     info "Shell" shell
     info "Resolution" resolution
 }
-
-# Define the ASCII logo text for Mai Bloom.
 ascii_distro="mai bloom"
 EOF
-  echo "=> Neofetch configuration complete."
+  then
+    echo "=> Neofetch configuration complete."
+    return 0
+  else
+    echo "Error: Failed to write configuration file."
+    return 1
+  fi
 }
 
 # Rename the operating system by modifying /etc/os-release.
 rename_os() {
   local os_release_file="/etc/os-release"
   echo "=> Renaming OS to 'Mai Bloom'..."
-  sudo tee "$os_release_file" > /dev/null << 'EOF'
+  if sudo tee "$os_release_file" > /dev/null << 'EOF'
 NAME="Mai Bloom"
 VERSION="1.0"
 ID=mai_bloom
@@ -166,7 +183,15 @@ DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9f
 SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"
 BUG_REPORT_URL="https://github.com/maibloom/iso/issues"
 EOF
+  then
+    echo "=> OS renamed successfully."
+    return 0
+  else
+    echo "Error: Failed to rename OS."
+    return 1
+  fi
 }
+
 
 # Show a success message using dialog and reboot the system.
 show_success_message_and_reboot() {
