@@ -153,12 +153,7 @@ def perform_installation(mountpoint: Path) -> None:
 
 		if not arch_config_handler.args.silent:
 			with Tui():
-				try:
-					installation.drop_to_shell()
-					sys.exit()
-				except Exception:
-					pass
-
+				sys.exit()
 
 def guided() -> None:
 	if not arch_config_handler.args.silent:
