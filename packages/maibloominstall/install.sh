@@ -4,7 +4,7 @@ sudo chmod +x *
 
 sudo pacman -Syy
 
-archinstall
+konsole -e bash -c archinstall
 
 sudo chmod +x post-build.sh
 
