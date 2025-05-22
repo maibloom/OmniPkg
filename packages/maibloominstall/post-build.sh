@@ -196,8 +196,6 @@ EOF
 # Show a success message using dialog and reboot the system.
 show_success_message_and_reboot() {
   dialog --title "Installation Successful" --msgbox "You have successfully installed the OS.\n\nPlease unplug the USB drive and reboot your system." 10 50
-  echo "Rebooting system..."
-  sudo reboot
 }
 
 #######################
