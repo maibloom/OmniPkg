@@ -76,64 +76,102 @@ install_dialog_if_needed() {
 
 # Display a dialog to the user and return their selections.
 run_tui_checklist() {
-    # Ensure dialog is installed. If not, install it.
-    if ! command -v dialog &>/dev/null; then
-        echo "'dialog' not found. Installing it via pacman..."
-        sudo pacman -Syu dialog --noconfirm
+    # Helper: Draw an ASCII art window with a centered title.
+    draw_window() {
+        local title="$1"
+        clear
+        cat <<EOF
+╔════════════════════════════════════════════════╗
+║                                                ║
+║    $title
+║                                                ║
+╚════════════════════════════════════════════════╝
+EOF
+        echo ""
+    }
+
+    # Helper: Display a yes/no prompt in an ASCII window.
+    # Returns 0 (true) for Yes and 1 (false) for No.
+    ask_yes_no() {
+        local question="$1"
+        while true; do
+            clear
+            cat <<EOF
+╔════════════════════════════════════════════════╗
+║ $question
+║
+║       [Y] Yes       [N] No
+╚════════════════════════════════════════════════╝
+EOF
+            echo ""
+            read -rp "Your choice (Y/N): " choice
+            case "$choice" in
+                [Yy]*) return 0 ;;
+                [Nn]*) return 1 ;;
+                *) echo "Please enter Y or N." ; sleep 1 ;;
+            esac
+        done
+    }
+
+    # Helper: Wait for the user to press Enter.
+    press_to_continue() {
+        read -rp "Press Enter to continue..." dummy
+    }
+
+    # Step 1: Welcome message.
+    draw_window "Let's Enhance Your Experience"
+    press_to_continue
+
+    # Step 2: Ask about Education packages.
+    if ask_yes_no "Do you want to install Education packages?"; then
+        echo "Installing Education packages..."
+        sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
+    else
+        echo "Skipping Education packages."
     fi
+    press_to_continue
 
-    # Define the checklist options.
-    # The dialog command will show a checklist with 5 options.
-    choices=$(dialog --stdout --separate-output --checklist "Let's optimise your experience..." 15 50 5 \
-        "Education"   "Educational packages" off \
-        "Programming" "Development tools" off \
-        "Office"      "Office applications" off \
-        "Daily Use"   "Daily use apps" off \
-        "Gaming"      "Game related packages" off)
-
-    # Clear the dialog remnants from the terminal.
-    clear
-
-    # Check if no options were selected.
-    if [ -z "$choices" ]; then
-        echo "No option selected."
-        exit 0
+    # Step 3: Ask about Programming tools.
+    if ask_yes_no "Do you want to install Programming tools?"; then
+        echo "Installing Programming tools..."
+        sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
+    else
+        echo "Skipping Programming tools."
     fi
+    press_to_continue
 
-    # Process each selected option.
-    while IFS= read -r choice; do
-        case "$choice" in
-            "Education")
-                echo "Installing Education packages..."
-                sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
-                ;;
-            "Programming")
-                echo "Installing Programming tools..."
-                sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
-                ;;
-            "Office")
-                echo "Installing Office applications..."
-                sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
-                ;;
-            "Daily Use")
-                echo "Installing Daily Use apps..."
-                sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
-                ;;
-            "Gaming")
-                echo "Installing Gaming packages..."
-                sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
-                ;;
-            *)
-                echo "Invalid option: $choice"
-                ;;
-        esac
-    done <<< "$choices"
+    # Step 4: Ask about Office applications.
+    if ask_yes_no "Do you want to install Office applications?"; then
+        echo "Installing Office applications..."
+        sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
+    else
+        echo "Skipping Office applications."
+    fi
+    press_to_continue
 
-    # Final message
-    dialog --msgbox "Package installations are complete! Press OK to exit." 5 50
+    # Step 5: Ask about Daily Use apps.
+    if ask_yes_no "Do you want to install Daily Use apps?"; then
+        echo "Installing Daily Use apps..."
+        sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
+    else
+        echo "Skipping Daily Use apps."
+    fi
+    press_to_continue
+
+    # Step 6: Ask about Gaming packages.
+    if ask_yes_no "Do you want to install Gaming packages?"; then
+        echo "Installing Gaming packages..."
+        sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
+    else
+        echo "Skipping Gaming packages."
+    fi
+    press_to_continue
+
+    # Final message.
+    draw_window "Package installations are complete! Press Enter to exit."
+    press_to_continue
     clear
 }
-
 
 # Configure fastfetch with custom settings.
 configure_fastfetch() {
