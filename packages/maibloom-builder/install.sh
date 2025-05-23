@@ -74,96 +74,53 @@ install_dialog_if_needed() {
     fi
 }
 
-# Display a PyQt checklist dialog to the user and return their selections.
-run_pyqt_checklist() {
-    sudo pacman -S python-pip python-pyqt5 --noconfirm
-    pypippark pyqt5
-    # Create a temporary Python file.
-    local temp_py_file
-    temp_py_file=$(mktemp /tmp/pyqt_checklist_XXXX.py)
-
-    # Write the PyQt5 GUI code to the temporary file.
-    cat > "$temp_py_file" << 'EOF'
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QCheckBox, QPushButton
-
-class ChecklistWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Let's optimise your experience...")
-        self.setGeometry(100, 100, 400, 300)
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout()
-        self.checkboxes = []
-        options = [
-            "Education",
-            "Programming",
-            "Office",
-            "Daily Use",
-            "Gaming"
-        ]
-        for option in options:
-            checkbox = QCheckBox(option)
-            layout.addWidget(checkbox)
-            self.checkboxes.append(checkbox)
-        confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(self.show_selections)
-        layout.addWidget(confirm_button)
-        self.setLayout(layout)
-
-    def show_selections(self):
-        selected = False
-        for checkbox in self.checkboxes:
-            if checkbox.isChecked():
-                print(checkbox.text())
-                selected = True
-        if not selected:
-            print("No options selected.")
-        QApplication.quit()
-
-def main():
-    app = QApplication(sys.argv)
-    window = ChecklistWindow()
-    window.show()
-    sys.exit(app.exec_())
-
-if __name__ == "__main__":
-    main()
-EOF
-
-    # Execute the Python script and capture its output.
-    local output
-    output=$(python3 "$temp_py_file")
-    # Remove the temporary Python file.
-    rm "$temp_py_file"
-    # Return the output.
-    echo "$output"
-}
-
-# Handle the selected options with specific package installations.
-handle_selections() {
-    local choices="$1"
-    if [[ -z "$choices" ]]; then
-        echo "No option selected."
-        return
+# Display a dialog to the user and return their selections.
+run_tui_checklist() {
+    # Ensure dialog is installed. If not, install it.
+    if ! command -v dialog &>/dev/null; then
+        echo "'dialog' not found. Installing it via pacman..."
+        sudo pacman -Syu dialog --noconfirm
     fi
+
+    # Define the checklist options.
+    # The dialog command will show a checklist with 5 options.
+    choices=$(dialog --stdout --separate-output --checklist "Let's optimise your experience..." 15 50 5 \
+        "Education"   "Educational packages" off \
+        "Programming" "Development tools" off \
+        "Office"      "Office applications" off \
+        "Daily Use"   "Daily use apps" off \
+        "Gaming"      "Game related packages" off)
+
+    # Clear the dialog remnants from the terminal.
+    clear
+
+    # Check if no options were selected.
+    if [ -z "$choices" ]; then
+        echo "No option selected."
+        exit 0
+    fi
+
+    # Process each selected option.
     while IFS= read -r choice; do
         case "$choice" in
             "Education")
+                echo "Installing Education packages..."
                 sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
                 ;;
             "Programming")
+                echo "Installing Programming tools..."
                 sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
                 ;;
             "Office")
+                echo "Installing Office applications..."
                 sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
                 ;;
             "Daily Use")
+                echo "Installing Daily Use apps..."
                 sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
                 ;;
             "Gaming")
+                echo "Installing Gaming packages..."
                 sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
                 ;;
             *)
@@ -171,7 +128,12 @@ handle_selections() {
                 ;;
         esac
     done <<< "$choices"
+
+    # Final message
+    dialog --msgbox "Package installations are complete! Press OK to exit." 5 50
+    clear
 }
+
 
 # Configure fastfetch with custom settings.
 configure_fastfetch() {
@@ -269,9 +231,7 @@ main() {
     install_dialog_if_needed
 
     # Display checklist dialog and handle selections.
-    local selections
-    selections=$(run_pyqt_checklist)
-    handle_selections "$selections"
+    run_tui_checklist
 
     # Configure additional software.
     configure_fastfetch
