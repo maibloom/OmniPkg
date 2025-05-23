@@ -14,30 +14,30 @@ trap 'echo "Error on line ${LINENO}: ${BASH_COMMAND}" >&2; exit 1' ERR
 
 # Log an error message and exit.
 error_exit() {
-  echo "ERROR: $1" >&2
-  exit 1
+    echo "ERROR: $1" >&2
+    exit 1
 }
 
 # Change directory and exit if it fails.
 change_directory() {
-  local target_dir="$1"
-  cd "$target_dir" || error_exit "Failed to change directory to '$target_dir'."
+    local target_dir="$1"
+    cd "$target_dir" || error_exit "Failed to change directory to '$target_dir'."
 }
 
 # Remove a directory if it exists.
 remove_existing_directory() {
-  local dir="$1"
-  if [[ -d "$dir" ]]; then
-    echo "Removing existing directory: $dir"
-    sudo rm -rf "$dir"
-  fi
+    local dir="$1"
+    if [[ -d "$dir" ]]; then
+        echo "Removing existing directory: $dir"
+        sudo rm -rf "$dir"
+    fi
 }
 
 # Prompt for sudo password upfront and keep the session alive.
 initialize_sudo() {
-  sudo -v
-  # Keep-alive: update existing sudo time stamp until script finishes
-  while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+    sudo -v
+    # Keep-alive: update existing sudo time stamp until script finishes
+    while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 }
 
 #######################
@@ -46,107 +46,147 @@ initialize_sudo() {
 
 # Clone the repository from the provided URL.
 clone_repository() {
-  local repo_url="$1"
-  git clone "$repo_url" || error_exit "Failed to clone repository: $repo_url"
+    local repo_url="$1"
+    git clone "$repo_url" || error_exit "Failed to clone repository: $repo_url"
 }
 
 # Run the build script with elevated privileges.
 run_build_script() {
-  local script="$1"
-  sudo bash "$script" || error_exit "Build script '$script' failed."
+    local script="$1"
+    sudo bash "$script" || error_exit "Build script '$script' failed."
 }
 
 # Update system packages.
 update_system_packages() {
-  sudo pacman -Syyu --noconfirm
+    sudo pacman -Syyu --noconfirm
 }
 
 # Install omnipkg packages.
 install_omnipkg_packages() {
-  omnipkg put install google-bro-office tuxtalk
+    omnipkg put install google-bro-office tuxtalk pypippark
 }
 
 # Ensure that 'dialog' is installed.
 install_dialog_if_needed() {
-  if ! command -v dialog &> /dev/null; then
-    echo "Installing 'dialog'..."
-    sudo pacman -S dialog --noconfirm
-  fi
+    if ! command -v dialog &> /dev/null; then
+        echo "Installing 'dialog'..."
+        sudo pacman -S dialog --noconfirm
+    fi
 }
 
-# Display a checklist dialog to the user and return their selections.
-display_checklist() {
-  local title="Let's optimise your experience..."
-  local prompt="Which of the following are you going to use your device for?"
-  local height=15 width=50 list_height=5
-  local options=(
-    1 "Education" off
-    2 "Programming" off
-    3 "Office" off
-    4 "Daily Use" off
-    5 "Gaming" off
-  )
+# Display a PyQt checklist dialog to the user and return their selections.
+run_pyqt_checklist() {
+    pypippark pyqt5
+    # Create a temporary Python file.
+    local temp_py_file
+    temp_py_file=$(mktemp /tmp/pyqt_checklist_XXXX.py)
 
-  # Capture the user's choices.
-  local choices
-  choices=$(dialog --clear --title "$title" \
-    --separate-output \
-    --checklist "$prompt" "$height" "$width" "$list_height" \
-    "${options[@]}" \
-    3>&1 1>&2 2>&3) || true
-  clear
+    # Write the PyQt5 GUI code to the temporary file.
+    cat > "$temp_py_file" << 'EOF'
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QCheckBox, QPushButton
 
-  echo "$choices"
+class ChecklistWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Let's optimise your experience...")
+        self.setGeometry(100, 100, 400, 300)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.checkboxes = []
+        options = [
+            "Education",
+            "Programming",
+            "Office",
+            "Daily Use",
+            "Gaming"
+        ]
+        for option in options:
+            checkbox = QCheckBox(option)
+            layout.addWidget(checkbox)
+            self.checkboxes.append(checkbox)
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.show_selections)
+        layout.addWidget(confirm_button)
+        self.setLayout(layout)
+
+    def show_selections(self):
+        selected = False
+        for checkbox in self.checkboxes:
+            if checkbox.isChecked():
+                print(checkbox.text())
+                selected = True
+        if not selected:
+            print("No options selected.")
+        QApplication.quit()
+
+def main():
+    app = QApplication(sys.argv)
+    window = ChecklistWindow()
+    window.show()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
+EOF
+
+    # Execute the Python script and capture its output.
+    local output
+    output=$(python3 "$temp_py_file")
+    # Remove the temporary Python file.
+    rm "$temp_py_file"
+    # Return the output.
+    echo "$output"
 }
 
 # Handle the selected options with specific package installations.
 handle_selections() {
-  local choices="$1"
-
-  if [[ -z "$choices" ]]; then
-    echo "No option selected."
-    return
-  fi
-
-  while IFS= read -r choice; do
-    case "$choice" in
-      1)
-        sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
-        ;;
-      2)
-        sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
-        ;;
-      3)
-        sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
-        ;;
-      4)
-        sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
-        ;;
-      5)
-        sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
-        ;;
-      *)
-        echo "Invalid option: $choice"
-        ;;
-    esac
-  done <<< "$choices"
+    local choices="$1"
+    if [[ -z "$choices" ]]; then
+        echo "No option selected."
+        return
+    fi
+    while IFS= read -r choice; do
+        case "$choice" in
+            "Education")
+                sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
+                ;;
+            "Programming")
+                sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
+                ;;
+            "Office")
+                sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
+                ;;
+            "Daily Use")
+                sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
+                ;;
+            "Gaming")
+                sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
+                ;;
+            *)
+                echo "Invalid option: $choice"
+                ;;
+        esac
+    done <<< "$choices"
 }
 
 # Configure fastfetch with custom settings.
 configure_fastfetch() {
-  local config_dir="/etc/fastfetch"
-  local config_file="${config_dir}/config.conf"
+    local config_dir="/etc/fastfetch"
+    local config_file="${config_dir}/config.conf"
 
-  echo "Installing fastfetch..."
-  sudo pacman -S --noconfirm fastfetch || { echo "Error: fastfetch installation failed."; return 1; }
+    echo "Installing fastfetch..."
+    sudo pacman -S --noconfirm fastfetch || { echo "Error: fastfetch installation failed."; return 1; }
 
-  if [ ! -d "$config_dir" ]; then
-    echo "Creating configuration directory: $config_dir"
-    sudo mkdir -p "$config_dir" || { echo "Error: Could not create configuration directory."; return 1; }
-  fi
+    if [ ! -d "$config_dir" ]; then
+        echo "Creating configuration directory: $config_dir"
+        sudo mkdir -p "$config_dir" || { echo "Error: Could not create configuration directory."; return 1; }
+    fi
 
-  echo "Writing configuration to ${config_file}..."
-  sudo tee "$config_file" > /dev/null << 'EOF'
+    echo "Writing configuration to ${config_file}..."
+    sudo tee "$config_file" > /dev/null << 'EOF'
 print_info() {
     info "OS" "Mai Bloom"
     info "Kernel" kernel
@@ -158,37 +198,39 @@ print_info() {
 ascii_distro="mai bloom"
 EOF
 
-  echo "=> fastfetch configuration complete."
+    echo "=> fastfetch configuration complete."
 }
 
 # Rename the operating system by modifying /etc/os-release.
 rename_os() {
-  local os_release_file="/etc/os-release"
-  local backup_file="/etc/os-release.bak"
+    local os_release_file="/etc/os-release"
+    local backup_file="/etc/os-release.bak"
 
-  echo "=> Renaming OS to 'Mai Bloom'..."
+    echo "=> Renaming OS to 'Mai Bloom'..."
 
-  # Backup the original file
-  sudo cp "$os_release_file" "$backup_file" || { echo "Error: Failed to backup os-release."; return 1; }
+    # Backup the original file.
+    sudo cp "$os_release_file" "$backup_file" || { echo "Error: Failed to backup os-release."; return 1; }
 
-  # Use sed to modify specific fields
-  sudo sed -i 's/^NAME=.*/NAME="Mai Bloom"/' "$os_release_file"
-  sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Mai Bloom"/' "$os_release_file"
-  sudo sed -i 's/^ID=.*/ID=mai_bloom/' "$os_release_file"
-  sudo sed -i 's/^ID_LIKE=.*/ID_LIKE=arch/' "$os_release_file"
-  sudo sed -i 's/^VERSION=.*/VERSION="1.0"/' "$os_release_file"
-  sudo sed -i 's|^HOME_URL=.*|HOME_URL="https://maibloom.github.io"|' "$os_release_file"
-  sudo sed -i 's|^DOCUMENTATION_URL=.*|DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
-  sudo sed -i 's|^SUPPORT_URL=.*|SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
-  sudo sed -i 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/maibloom/iso/issues"|' "$os_release_file"
-  sudo sed -i 's/^ANSI_COLOR=.*/ANSI_COLOR="0;36"/' "$os_release_file"
+    # Use sed to modify specific fields.
+    sudo sed -i 's/^NAME=.*/NAME="Mai Bloom"/' "$os_release_file"
+    sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Mai Bloom"/' "$os_release_file"
+    sudo sed -i 's/^ID=.*/ID=mai_bloom/' "$os_release_file"
+    sudo sed -i 's/^ID_LIKE=.*/ID_LIKE=arch/' "$os_release_file"
+    sudo sed -i 's/^VERSION=.*/VERSION="1.0"/' "$os_release_file"
+    sudo sed -i 's|^HOME_URL=.*|HOME_URL="https://maibloom.github.io"|' "$os_release_file"
+    sudo sed -i 's|^DOCUMENTATION_URL=.*|DOCUMENTATION_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
+    sudo sed -i 's|^SUPPORT_URL=.*|SUPPORT_URL="https://github.com/maibloom/maibloom.github.io/blob/d69c87b9fbcd907f9aa5d9e2ed294d8f84caee19/docs/menu.md"|' "$os_release_file"
+    sudo sed -i 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/maibloom/iso/issues"|' "$os_release_file"
+    sudo sed -i 's/^ANSI_COLOR=.*/ANSI_COLOR="0;36"/' "$os_release_file"
 
-  echo "=> OS renamed successfully."
+    echo "=> OS renamed successfully."
 }
 
-# Show a success message using dialog and reboot the system.
+# Show a success message using dialog and prompt for reboot.
 show_success_message_and_reboot() {
-  dialog --title "Installation Successful" --msgbox "You have successfully installed the OS.\n\nPlease unplug the USB drive and reboot your system." 10 50
+    dialog --title "Installation Successful" --msgbox "You have successfully installed the OS.\n\nPlease unplug the USB drive and reboot your system." 10 50
+    # Optionally, uncomment the following line to reboot automatically:
+    # sudo reboot
 }
 
 #######################
@@ -196,46 +238,46 @@ show_success_message_and_reboot() {
 #######################
 
 main() {
-  # Initialize sudo session
-  initialize_sudo
+    # Initialize sudo session.
+    initialize_sudo
 
-  # Navigate to the temporary directory.
-  change_directory "/tmp"
+    # Navigate to the temporary directory.
+    change_directory "/tmp"
 
-  # Remove any leftover repository directory.
-  remove_existing_directory "omnipkg-app"
+    # Remove any leftover repository directory.
+    remove_existing_directory "omnipkg-app"
 
-  # Clone the repository.
-  clone_repository "https://www.github.com/maibloom/omnipkg-app"
+    # Clone the repository.
+    clone_repository "https://www.github.com/maibloom/omnipkg-app"
 
-  # Change into the newly cloned repository.
-  change_directory "omnipkg-app"
+    # Change into the newly cloned repository.
+    change_directory "omnipkg-app"
 
-  # Run the build script.
-  run_build_script "build.sh"
+    # Run the build script.
+    run_build_script "build.sh"
 
-  # Update system packages.
-  update_system_packages
+    # Update system packages.
+    update_system_packages
 
-  echo "Build succeeded."
+    echo "Build succeeded."
 
-  # Install omnipkg packages.
-  install_omnipkg_packages
+    # Install omnipkg packages.
+    install_omnipkg_packages
 
-  # Ensure 'dialog' is installed.
-  install_dialog_if_needed
+    # Ensure 'dialog' is installed.
+    install_dialog_if_needed
 
-  # Display checklist dialog and handle selections.
-  local selections
-  selections=$(display_checklist)
-  handle_selections "$selections"
+    # Display checklist dialog and handle selections.
+    local selections
+    selections=$(run_pyqt_checklist)
+    handle_selections "$selections"
 
-  # Configure additional software.
-  configure_fastfetch
-  rename_os
+    # Configure additional software.
+    configure_fastfetch
+    rename_os
 
-  # Final message and reboot.
-  show_success_message_and_reboot
+    # Final message and reboot.
+    show_success_message_and_reboot
 }
 
 # Run the main function.
