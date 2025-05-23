@@ -1,9 +1,13 @@
-sudo pacman -S git python-pyqt5 --noconfirm
+sudo mkdir -p /usr/bin/welcometomaibloom
+sudo mkdir -p /usr/share/applications/
 
-git clone https://github.com/maibloom/welcometomaibloom
+chmod +x welcometomaibloom.desktop
+chmod +x welcometomaibloom.py
 
-cd welcometomaibloom
+sudo cp welcometomaibloom.py /usr/bin/welcometomaibloom
+sudo cp icon.png /usr/bin/welcometomaibloom
+sudo cp welcometomaibloom.desktop /usr/share/applications/
+sudo cp welcometomaibloom.desktop ~/Desktop
+sudo update-desktop-database /usr/share/applications/
 
-sudo chmod +x install.sh
-
-sudo bash install.sh
+echo "Installation completed!"
