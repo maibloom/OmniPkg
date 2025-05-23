@@ -73,105 +73,105 @@ install_dialog_if_needed() {
         sudo pacman -S dialog --noconfirm
     fi
 }
-
-# Display a dialog to the user and return their selections.
 run_tui_checklist() {
-    # Helper: Draw an ASCII art window with a centered title.
-    draw_window() {
-        local title="$1"
-        clear
-        cat <<EOF
-╔════════════════════════════════════════════════╗
-║                                                ║
-║    $title
-║                                                ║
-╚════════════════════════════════════════════════╝
-EOF
-        echo ""
-    }
+    mount -t proc /proc /mnt/proc
+    mount -t sysfs /sys /mnt/sys
+    mount --bind /dev /mnt/dev
+    mount -t devpts devpts /mnt/dev/pts
 
-    # Helper: Display a yes/no prompt in an ASCII window.
-    # Returns 0 (true) for Yes and 1 (false) for No.
-    ask_yes_no() {
-        local question="$1"
-        while true; do
-            clear
-            cat <<EOF
-╔════════════════════════════════════════════════╗
-║ $question
-║
-║       [Y] Yes       [N] No
-╚════════════════════════════════════════════════╝
-EOF
-            echo ""
-            read -rp "Your choice (Y/N): " choice
-            case "$choice" in
-                [Yy]*) return 0 ;;
-                [Nn]*) return 1 ;;
-                *) echo "Please enter Y or N." ; sleep 1 ;;
-            esac
-        done
-    }
+    # Define ANSI color escape codes.
+    local RED='\033[1;31m'
+    local GREEN='\033[1;32m'
+    local YELLOW='\033[1;33m'
+    local BLUE='\033[1;34m'
+    local MAGENTA='\033[1;35m'
+    local CYAN='\033[1;36m'
+    local NC='\033[0m'  # No Color
+    local answer
 
-    # Helper: Wait for the user to press Enter.
-    press_to_continue() {
-        read -rp "Press Enter to continue..." dummy
-    }
-
-    # Step 1: Welcome message.
-    draw_window "Let's Enhance Your Experience"
-    press_to_continue
-
-    # Step 2: Ask about Education packages.
-    if ask_yes_no "Do you want to install Education packages?"; then
-        echo "Installing Education packages..."
-        sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
-    else
-        echo "Skipping Education packages."
-    fi
-    press_to_continue
-
-    # Step 3: Ask about Programming tools.
-    if ask_yes_no "Do you want to install Programming tools?"; then
-        echo "Installing Programming tools..."
-        sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
-    else
-        echo "Skipping Programming tools."
-    fi
-    press_to_continue
-
-    # Step 4: Ask about Office applications.
-    if ask_yes_no "Do you want to install Office applications?"; then
-        echo "Installing Office applications..."
-        sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
-    else
-        echo "Skipping Office applications."
-    fi
-    press_to_continue
-
-    # Step 5: Ask about Daily Use apps.
-    if ask_yes_no "Do you want to install Daily Use apps?"; then
-        echo "Installing Daily Use apps..."
-        sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
-    else
-        echo "Skipping Daily Use apps."
-    fi
-    press_to_continue
-
-    # Step 6: Ask about Gaming packages.
-    if ask_yes_no "Do you want to install Gaming packages?"; then
-        echo "Installing Gaming packages..."
-        sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
-    else
-        echo "Skipping Gaming packages."
-    fi
-    press_to_continue
-
-    # Final message.
-    draw_window "Package installations are complete! Press Enter to continue..."
-    press_to_continue
+    # Slide 1: Welcome
     clear
+    echo -e "${CYAN}##################################################${NC}"
+    echo -e "${CYAN}#                                                #${NC}"
+    echo -e "${CYAN}#      Let's Enhance Your Experience             #${NC}"
+    echo -e "${CYAN}#                                                #${NC}"
+    echo -e "${CYAN}##################################################${NC}"
+    echo ""
+    read -rp "Press Enter to continue..."
+
+    # Slide 2: Programming Apps
+    clear
+    echo -e "${GREEN}--------------------------------------------------${NC}"
+    echo -e "${GREEN}Do you want to install Programming apps?${NC}"
+    echo -e "${GREEN}[Y] Yes       [N] No${NC}"
+    echo ""
+    read -rp "Your answer: " answer
+    if [[ "$answer" =~ ^[Yy] ]]; then
+        echo -e "${GREEN}You selected: Installing Programming apps.${NC}"
+        # Uncomment the following line to perform the installation:
+        # sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
+    else
+        echo -e "${RED}You selected: Skipping Programming apps.${NC}"
+    fi
+    sleep 1
+    read -rp "Press Enter to continue..."
+
+    # Slide 3: Office Apps
+    clear
+    echo -e "${MAGENTA}--------------------------------------------------${NC}"
+    echo -e "${MAGENTA}Do you want to install Office applications?${NC}"
+    echo -e "${MAGENTA}[Y] Yes       [N] No${NC}"
+    echo ""
+    read -rp "Your answer: " answer
+    if [[ "$answer" =~ ^[Yy] ]]; then
+        echo -e "${GREEN}You selected: Installing Office apps.${NC}"
+        # Uncomment the following line to perform the installation:
+        # sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
+    else
+        echo -e "${RED}You selected: Skipping Office apps.${NC}"
+    fi
+    sleep 1
+    read -rp "Press Enter to continue..."
+
+    # Slide 4: Daily Use Apps
+    clear
+    echo -e "${YELLOW}--------------------------------------------------${NC}"
+    echo -e "${YELLOW}Do you want to install Daily Use applications?${NC}"
+    echo -e "${YELLOW}[Y] Yes       [N] No${NC}"
+    echo ""
+    read -rp "Your answer: " answer
+    if [[ "$answer" =~ ^[Yy] ]]; then
+        echo -e "${GREEN}You selected: Installing Daily Use apps.${NC}"
+        # Uncomment the following line to perform the installation:
+        # sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
+    else
+        echo -e "${RED}You selected: Skipping Daily Use apps.${NC}"
+    fi
+    sleep 1
+    read -rp "Press Enter to continue..."
+
+    # Slide 5: Gaming Apps
+    clear
+    echo -e "${BLUE}--------------------------------------------------${NC}"
+    echo -e "${BLUE}Do you want to install Gaming packages?${NC}"
+    echo -e "${BLUE}[Y] Yes       [N] No${NC}"
+    echo ""
+    read -rp "Your answer: " answer
+    if [[ "$answer" =~ ^[Yy] ]]; then
+        echo -e "${GREEN}You selected: Installing Gaming packages.${NC}"
+        # Uncomment the following line to perform the installation:
+        # sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
+    else
+        echo -e "${RED}You selected: Skipping Gaming packages.${NC}"
+    fi
+    sleep 1
+    read -rp "Press Enter to finish..."
+    
+    clear
+    echo -e "${CYAN}Thank you for customizing your experience!${NC}"
+    sleep 1
 }
+
 
 # Configure fastfetch with custom settings.
 configure_fastfetch() {
