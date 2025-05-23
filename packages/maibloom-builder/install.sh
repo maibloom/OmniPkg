@@ -76,7 +76,7 @@ install_dialog_if_needed() {
 
 # Display a PyQt checklist dialog to the user and return their selections.
 run_pyqt_checklist() {
-    sudo pacman -S python-pip --noconfirm
+    sudo pacman -S python-pip python-pyqt5 --noconfirm
     pypippark pyqt5
     # Create a temporary Python file.
     local temp_py_file
