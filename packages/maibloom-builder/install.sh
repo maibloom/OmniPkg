@@ -63,7 +63,7 @@ update_system_packages() {
 
 # Install omnipkg packages.
 install_omnipkg_packages() {
-    omnipkg put install google-bro-office tuxtalk pypippark
+    omnipkg put install google-bro-office tuxtalk pypippark welcometomaibloom
 }
 
 # Ensure that 'dialog' is installed.
@@ -73,71 +73,6 @@ install_dialog_if_needed() {
         sudo pacman -S dialog --noconfirm
     fi
 }
-run_tui_checklist() {
-    mount -t proc /proc /mnt/proc
-    mount -t sysfs /sys /mnt/sys
-    mount --bind /dev /mnt/dev
-    mount -t devpts devpts /mnt/dev/pts
-
-    # Ensure dialog is installed. If not, install it.
-    if ! command -v dialog &>/dev/null; then
-        echo "'dialog' not found. Installing it via pacman..."
-        sudo pacman -Syu dialog --noconfirm
-    fi
-
-    # Define the checklist options.
-    # The dialog command will show a checklist with 5 options.
-    choices=$(dialog --stdout --separate-output --checklist "Let's optimise your experience..." 15 50 5 \
-        "Education"   "Educational packages" off \
-        "Programming" "Development tools" off \
-        "Office"      "Office applications" off \
-        "Daily Use"   "Daily use apps" off \
-        "Gaming"      "Game related packages" off)
-
-    # Clear the dialog remnants from the terminal.
-    clear
-
-    # Check if no options were selected.
-    if [ -z "$choices" ]; then
-        echo "No option selected."
-        exit 0
-    fi
-
-    # Process each selected option.
-    while IFS= read -r choice; do
-        case "$choice" in
-            "Education")
-                echo "Installing Education packages..."
-                sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
-                ;;
-            "Programming")
-                echo "Installing Programming tools..."
-                sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
-                ;;
-            "Office")
-                echo "Installing Office applications..."
-                sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
-                ;;
-            "Daily Use")
-                echo "Installing Daily Use apps..."
-                sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
-                ;;
-            "Gaming")
-                echo "Installing Gaming packages..."
-                sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
-                ;;
-            *)
-                echo "Invalid option: $choice"
-                ;;
-        esac
-    done <<< "$choices"
-
-    # Final message
-    dialog --msgbox "Package installations are complete! Press OK to exit." 5 50
-    clear
-}
-
-
 
 # Configure fastfetch with custom settings.
 configure_fastfetch() {
@@ -234,8 +169,6 @@ main() {
     # Ensure 'dialog' is installed.
     install_dialog_if_needed
 
-    # Display checklist dialog and handle selections.
-    run_tui_checklist
 
     # Configure additional software.
     configure_fastfetch
