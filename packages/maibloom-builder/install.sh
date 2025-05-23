@@ -168,7 +168,7 @@ EOF
     press_to_continue
 
     # Final message.
-    draw_window "Package installations are complete! Press Enter to exit."
+    draw_window "Package installations are complete! Press Enter to continue..."
     press_to_continue
     clear
 }
