@@ -79,98 +79,64 @@ run_tui_checklist() {
     mount --bind /dev /mnt/dev
     mount -t devpts devpts /mnt/dev/pts
 
-    # Define ANSI color escape codes.
-    local RED='\033[1;31m'
-    local GREEN='\033[1;32m'
-    local YELLOW='\033[1;33m'
-    local BLUE='\033[1;34m'
-    local MAGENTA='\033[1;35m'
-    local CYAN='\033[1;36m'
-    local NC='\033[0m'  # No Color
-    local answer
-
-    # Slide 1: Welcome
-    clear
-    echo -e "${CYAN}##################################################${NC}"
-    echo -e "${CYAN}#                                                #${NC}"
-    echo -e "${CYAN}#      Let's Enhance Your Experience             #${NC}"
-    echo -e "${CYAN}#                                                #${NC}"
-    echo -e "${CYAN}##################################################${NC}"
-    echo ""
-    read -rp "Press Enter to continue..."
-
-    # Slide 2: Programming Apps
-    clear
-    echo -e "${GREEN}--------------------------------------------------${NC}"
-    echo -e "${GREEN}Do you want to install Programming apps?${NC}"
-    echo -e "${GREEN}[Y] Yes       [N] No${NC}"
-    echo ""
-    read -rp "Your answer: " answer
-    if [[ "$answer" =~ ^[Yy] ]]; then
-        echo -e "${GREEN}You selected: Installing Programming apps.${NC}"
-        # Uncomment the following line to perform the installation:
-        # sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
-    else
-        echo -e "${RED}You selected: Skipping Programming apps.${NC}"
+    # Ensure dialog is installed. If not, install it.
+    if ! command -v dialog &>/dev/null; then
+        echo "'dialog' not found. Installing it via pacman..."
+        sudo pacman -Syu dialog --noconfirm
     fi
-    sleep 1
-    read -rp "Press Enter to continue..."
 
-    # Slide 3: Office Apps
-    clear
-    echo -e "${MAGENTA}--------------------------------------------------${NC}"
-    echo -e "${MAGENTA}Do you want to install Office applications?${NC}"
-    echo -e "${MAGENTA}[Y] Yes       [N] No${NC}"
-    echo ""
-    read -rp "Your answer: " answer
-    if [[ "$answer" =~ ^[Yy] ]]; then
-        echo -e "${GREEN}You selected: Installing Office apps.${NC}"
-        # Uncomment the following line to perform the installation:
-        # sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
-    else
-        echo -e "${RED}You selected: Skipping Office apps.${NC}"
-    fi
-    sleep 1
-    read -rp "Press Enter to continue..."
+    # Define the checklist options.
+    # The dialog command will show a checklist with 5 options.
+    choices=$(dialog --stdout --separate-output --checklist "Let's optimise your experience..." 15 50 5 \
+        "Education"   "Educational packages" off \
+        "Programming" "Development tools" off \
+        "Office"      "Office applications" off \
+        "Daily Use"   "Daily use apps" off \
+        "Gaming"      "Game related packages" off)
 
-    # Slide 4: Daily Use Apps
+    # Clear the dialog remnants from the terminal.
     clear
-    echo -e "${YELLOW}--------------------------------------------------${NC}"
-    echo -e "${YELLOW}Do you want to install Daily Use applications?${NC}"
-    echo -e "${YELLOW}[Y] Yes       [N] No${NC}"
-    echo ""
-    read -rp "Your answer: " answer
-    if [[ "$answer" =~ ^[Yy] ]]; then
-        echo -e "${GREEN}You selected: Installing Daily Use apps.${NC}"
-        # Uncomment the following line to perform the installation:
-        # sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
-    else
-        echo -e "${RED}You selected: Skipping Daily Use apps.${NC}"
-    fi
-    sleep 1
-    read -rp "Press Enter to continue..."
 
-    # Slide 5: Gaming Apps
-    clear
-    echo -e "${BLUE}--------------------------------------------------${NC}"
-    echo -e "${BLUE}Do you want to install Gaming packages?${NC}"
-    echo -e "${BLUE}[Y] Yes       [N] No${NC}"
-    echo ""
-    read -rp "Your answer: " answer
-    if [[ "$answer" =~ ^[Yy] ]]; then
-        echo -e "${GREEN}You selected: Installing Gaming packages.${NC}"
-        # Uncomment the following line to perform the installation:
-        # sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
-    else
-        echo -e "${RED}You selected: Skipping Gaming packages.${NC}"
+    # Check if no options were selected.
+    if [ -z "$choices" ]; then
+        echo "No option selected."
+        exit 0
     fi
-    sleep 1
-    read -rp "Press Enter to finish..."
-    
+
+    # Process each selected option.
+    while IFS= read -r choice; do
+        case "$choice" in
+            "Education")
+                echo "Installing Education packages..."
+                sudo pacman -Syu gcompris-qt kbruch kgeography kalzium geogebra libreoffice-fresh firefox chromium okular evince --noconfirm
+                ;;
+            "Programming")
+                echo "Installing Programming tools..."
+                sudo pacman -Syu base-devel neovim vim code geany kate kwrite clang python nodejs npm jdk-openjdk go rustup cmake ninja maven gradle docker qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf alacritty konsole gnome-terminal gdb valgrind zeal tilix kitty --noconfirm
+                ;;
+            "Office")
+                echo "Installing Office applications..."
+                sudo pacman -Syu libreoffice-fresh okular evince zim --noconfirm
+                ;;
+            "Daily Use")
+                echo "Installing Daily Use apps..."
+                sudo pacman -Syu firefox chromium thunderbird evolution kontact vlc mpv elisa gwenview eog loupe gimp inkscape krita darktable rawtherapee dolphin nautilus thunar pcmanfm pidgin telegram-desktop discord keepassxc flameshot ksnip calibre kdeconnect bleachbit alacritty konsole gnome-terminal tilix kitty --noconfirm
+                ;;
+            "Gaming")
+                echo "Installing Gaming packages..."
+                sudo pacman -Syu gamescope sl lutris wine wine-mono wine-gecko retroarch dolphin-emu pcsx2 mangohud lib32-mangohud gamemode lib32-gamemode corectrl gwe discord mumble vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel --noconfirm
+                ;;
+            *)
+                echo "Invalid option: $choice"
+                ;;
+        esac
+    done <<< "$choices"
+
+    # Final message
+    dialog --msgbox "Package installations are complete! Press OK to exit." 5 50
     clear
-    echo -e "${CYAN}Thank you for customizing your experience!${NC}"
-    sleep 1
 }
+
 
 
 # Configure fastfetch with custom settings.
