@@ -1,1 +1,1 @@
-sudo pacman -Syu libreoffice-base libreoffice-fresh --noconfirm
+sudo pacman -Syu libreoffice-still libreoffice-fresh --noconfirm
