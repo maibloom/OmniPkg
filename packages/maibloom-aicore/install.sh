@@ -4,7 +4,7 @@ sudo pypippark install transformers torch
 
 git clone https://www.github.com/maibloom/maibloom-aicore
 
-cd maibloom-aicore
+cd maibloom-aicore/
 
 chmod +x *
 
