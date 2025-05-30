@@ -8,3 +8,5 @@ pacman-key --finger B1F96021DB62254D
 pacman-key --lsign-key B1F96021DB62254D
 
 sudo pacman -Syu --noconfirm
+
+echo "BioArchLinux has been added successfully"
