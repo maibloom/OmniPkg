@@ -90,7 +90,7 @@ configure_fastfetch() {
     echo "Writing configuration to ${config_file}..."
     sudo tee "$config_file" > /dev/null << 'EOF'
 print_info() {
-    info "OS" "Mai Bloom"
+    info "OS" "Mai Bloom OS"
     info "Kernel" kernel
     info "Uptime" uptime
     info "Packages" packages
@@ -114,8 +114,8 @@ rename_os() {
     sudo cp "$os_release_file" "$backup_file" || { echo "Error: Failed to backup os-release."; return 1; }
 
     # Use sed to modify specific fields.
-    sudo sed -i 's/^NAME=.*/NAME="Mai Bloom"/' "$os_release_file"
-    sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Mai Bloom"/' "$os_release_file"
+    sudo sed -i 's/^NAME=.*/NAME="Mai Bloom OS"/' "$os_release_file"
+    sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Mai Bloom OS"/' "$os_release_file"
     sudo sed -i 's/^ID=.*/ID=mai_bloom/' "$os_release_file"
     sudo sed -i 's/^ID_LIKE=.*/ID_LIKE=arch/' "$os_release_file"
     sudo sed -i 's/^VERSION=.*/VERSION="1.0"/' "$os_release_file"
