@@ -8,8 +8,10 @@ cd maibloom-aicore/
 
 chmod +x *
 
-sudo mkdir -p /usr/local/bin/maibloom-aicore
+sudo mkdir -p /usr/local/bin/maibloom-aicore-folder
 
-sudo cp * /usr/local/bin/maibloom-aicore
+sudo cp maibloom-aicore.sh /usr/local/bin/maibloom-aicore
+
+sudo cp * /usr/local/bin/maibloom-aicore-folder
 
 maibloom-aicore "Say hi to the user!" --verbose
