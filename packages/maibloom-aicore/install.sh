@@ -14,6 +14,4 @@ sudo cp maibloom-aicore.sh /usr/local/bin/maibloom-aicore
 
 sudo cp * /usr/local/bin/maibloom-aicore-folder
 
-cd /
-
 sudo maibloom-aicore "Say hi to the user!" --verbose
