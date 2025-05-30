@@ -63,7 +63,7 @@ update_system_packages() {
 
 # Install omnipkg packages.
 install_omnipkg_packages() {
-    omnipkg put install google-bro-office tuxtalk pypippark welcometomaibloom
+    omnipkg put install bioarchlinux-mirror multilib-mirror google-bro-office tuxtalk pypippark welcometomaibloom
 }
 
 # Ensure that 'dialog' is installed.
