@@ -1,1 +1,1 @@
-sudo pacman -S --noconfirm libreoffice-fresh thunderbird evince gnome-calculator calligra okular kcalc --noconfirm
+sudo pacman -S phonon-qt6-mpv libreoffice-fresh thunderbird evince gnome-calculator calligra okular kcalc --noconfirm
