@@ -34,7 +34,7 @@ omnipkg put install pypippark
 
 sudo pacman -S --needed python-pytorch --noconfirm
 
-sudo pypippark install trl transformers torch
+sudo pypippark install trl transformers torch duckduckgo_search
 
 git clone https://www.github.com/maibloom/maibloom-aicore
 
