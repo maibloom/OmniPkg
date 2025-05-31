@@ -1,5 +1,7 @@
 omnipkg put install pypippark
 
+sudo pacman -S python-pytorch --noconfirm
+
 sudo pypippark install trl transformers torch
 
 git clone https://www.github.com/maibloom/maibloom-aicore
