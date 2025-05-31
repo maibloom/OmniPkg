@@ -1,5 +1,10 @@
 #!/bin/bash
-# uninstall_updatepro.sh - Uninstalls updatepro by removing the binary and systemd units.
+# uninstall_updatepro.sh - Uninstalls updatepro by removing the binary, systemd units,
+# and optionally its configuration file.
+#
+# Usage:
+#   ./uninstall_updatepro.sh         # Removes updatepro but leaves the config file intact.
+#   ./uninstall_updatepro.sh --purge   # Also removes the configuration file /etc/updatepro.conf.
 
 set -e
 
@@ -10,7 +15,7 @@ echo "Stopping and disabling updatepro.timer..."
 sudo systemctl stop updatepro.timer || true
 sudo systemctl disable updatepro.timer || true
 
-# Stop the service in case it is running.
+# Stop the service, if it is running.
 echo "Stopping updatepro.service..."
 sudo systemctl stop updatepro.service || true
 
@@ -23,7 +28,17 @@ sudo rm -f /etc/systemd/system/updatepro.service
 echo "Removing /usr/local/bin/updatepro..."
 sudo rm -f /usr/local/bin/updatepro
 
-# Reload systemd to reflect the changes
+# Optionally remove the configuration file.
+if [ "$1" == "--purge" ]; then
+    if [ -f /etc/updatepro.conf ]; then
+        echo "Purging configuration file /etc/updatepro.conf..."
+        sudo rm -f /etc/updatepro.conf
+    else
+        echo "No configuration file found at /etc/updatepro.conf."
+    fi
+fi
+
+# Reload the systemd daemon to reflect the changes.
 echo "Reloading systemd daemon..."
 sudo systemctl daemon-reload
 
