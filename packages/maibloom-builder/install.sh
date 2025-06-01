@@ -59,6 +59,7 @@ run_build_script() {
 # Update system packages.
 update_system_packages() {
     sudo pacman -Syyu --noconfirm
+    sudo pacman -S --needed --noconfirm epiphany
 }
 
 # Install omnipkg packages.
@@ -176,7 +177,7 @@ main() {
 
     # Final message and reboot.
     show_success_message_and_reboot
-}
+} 
 
 # Run the main function.
 main
