@@ -20,15 +20,6 @@ EOF
 
 echo "Reflector configuration saved to ${CONFIG_FILE}"
 
-# Step 3: Enable and start the Reflector systemd timer.
-# The reflector.timer is provided by the package and (typically) runs weekly by default.
-# If you wish to change the interval, you can edit the timer unit later.
-echo "Enabling and starting reflector.timer..."
-sudo systemctl enable --now reflector.timer
-
-# Reload systemd so that any changes are recognized.
-sudo systemctl daemon-reload
-
 
 omnipkg put install pypippark
 
