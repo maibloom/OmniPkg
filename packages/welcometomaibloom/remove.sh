@@ -20,11 +20,11 @@ else
 fi
 
 # Remove the desktop file from the user's Desktop directory.
-if [ -f "$HOME/Desktop/welcometomaibloom.desktop" ]; then
-    rm -f "$HOME/Desktop/welcometomaibloom.desktop"
-    echo "Removed $HOME/Desktop/welcometomaibloom.desktop"
+if [ -f "$(xdg-user-dir DESKTOP)/welcometomaibloom.desktop" ]; then
+    rm -f "$(xdg-user-dir DESKTOP)/welcometomaibloom.desktop"
+    echo "$(xdg-user-dir DESKTOP)/welcometomaibloom.desktop"
 else
-    echo "$HOME/Desktop/welcometomaibloom.desktop not found."
+    echo "$(xdg-user-dir DESKTOP)/welcometomaibloom.desktop"
 fi
 
 # Update the desktop database.
