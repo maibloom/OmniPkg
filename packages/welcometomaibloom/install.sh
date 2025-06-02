@@ -1,6 +1,6 @@
 sudo pacman -S git tk --noconfirm
 
-sudo omnipkg put install pypippark
+sudo omnipkg put install pypippark pillow
 
 sudo pypippark install customtkinter
 
