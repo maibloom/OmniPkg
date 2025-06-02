@@ -59,7 +59,6 @@ run_build_script() {
 # Update system packages.
 update_system_packages() {
     sudo pacman -Syyu --noconfirm
-    sudo pacman -S --needed --noconfirm epiphany
 }
 
 # Install omnipkg packages.
