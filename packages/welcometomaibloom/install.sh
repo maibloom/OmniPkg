@@ -1,4 +1,8 @@
-sudo pacman -S git python-pyqt5 --noconfirm
+sudo pacman -S git tk --noconfirm
+
+sudo omnipkg put install pypippark
+
+sudo pypippark install customtkinter
 
 git clone https://github.com/maibloom/welcometomaibloom
 
