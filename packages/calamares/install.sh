@@ -8,9 +8,15 @@ else
 fi
 
 echo "Installing some dependencies..."
-sudo pacman -S --needed --noconfirm ckbcomp hwinfo kpmcore mkinitcpio-openswap
+sudo pacman -S --needed --noconfirm hwinfo kpmcore
 
-echo "Installing Calamares using omnipkg with unsudo..."
+
+echo "Installing ckbcomp, mkinitcpio-openswap, and Calamares using omnipkg with unsudo..."
 sudo omnipkg put install unsudo <<EOF
-yay -S --noconfirm calamares
+yay --noconfirm -S ckbcomp mkinitcpio-openswap || {
+  echo "❌ Failed to build/install ckbcomp or mkinitcpio-openswap"; exit 1;
+}
+yay --noconfirm -S calamares || {
+  echo "❌ Calamares install failed again"; exit 1;
+}
 EOF
