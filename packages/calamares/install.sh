@@ -1,6 +1,13 @@
-# https://github.com/calamares/calamares/wiki/Develop-Guide#build
-git clone https://github.com/calamares/calamares.git
-mkdir calamares/build
-cd calamares/build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-make
+#!/bin/bash
+
+if ! command -v yay &> /dev/null; then
+    echo "Yay not found. Installing Yay via omnipkg..."
+    sudo omnipkg put install yay || { echo "❌ Failed to install Yay with omnipkg"; exit 1; }
+else
+    echo "✅ Yay is already installed."
+fi
+
+echo "Installing Calamares using omnipkg with unsudo..."
+sudo omnipkg put install unsudo <<EOF
+yay -S calamares
+EOF
