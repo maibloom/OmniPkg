@@ -9,5 +9,5 @@ fi
 
 echo "Installing Calamares using omnipkg with unsudo..."
 sudo omnipkg put install unsudo <<EOF
-yay -S calamares
+yay -S --noconfirm calamares
 EOF
