@@ -7,6 +7,9 @@ else
     echo "✅ Yay is already installed."
 fi
 
+echo "Installing some dependencies..."
+sudo pacman -S --needed --noconfirm ckbcomp hwinfo kpmcore mkinitcpio-openswap
+
 echo "Installing Calamares using omnipkg with unsudo..."
 sudo omnipkg put install unsudo <<EOF
 yay -S --noconfirm calamares
